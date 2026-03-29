@@ -1,0 +1,116 @@
+@page "/system/health"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject SystemHealthService SystemHealthService
+@implements IDisposable
+
+<PageTitle>System Health - ClearEyeQ Admin</PageTitle>
+
+<div class="flex-between mb-lg">
+    <h2 style="font-weight: 700;">System Health</h2>
+    <div class="flex gap-sm" style="align-items: center;">
+        <span class="text-secondary" style="font-size: 13px;">
+            Last checked: @(_lastChecked?.ToString("HH:mm:ss") ?? "—")
+        </span>
+        <button class="btn btn-secondary btn-sm" @onclick="RefreshHealth" disabled="@_loading">
+            @(_loading ? "Checking..." : "Refresh Now")
+        </button>
+    </div>
+</div>
+
+<div class="grid-4 mb-lg">
+    <StatCard Title="Healthy"
+              Value="@_services.Count(s => s.Status == "Healthy").ToString()"
+              ColorClass="accent-success" />
+    <StatCard Title="Degraded"
+              Value="@_services.Count(s => s.Status == "Degraded").ToString()"
+              ColorClass="accent-warning" />
+    <StatCard Title="Unhealthy"
+              Value="@_services.Count(s => s.Status == "Unhealthy").ToString()"
+              ColorClass="accent-error" />
+    <StatCard Title="Avg Response"
+              Value="@AvgResponseTime"
+              Subtitle="milliseconds"
+              ColorClass="" />
+</div>
+
+<div class="grid-3">
+    @foreach (var service in _services)
+    {
+        <div class="card" style="border-left: 4px solid @StatusColor(service.Status);">
+            <div class="flex-between" style="margin-bottom: var(--space-sm);">
+                <span style="font-weight: 600; font-size: 15px;">@service.Name</span>
+                <StatusBadge Status="@service.Status" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--space-xs); font-size: 13px; color: var(--color-text-secondary);">
+                <div class="flex-between">
+                    <span>Response Time</span>
+                    <span style="font-weight: 500; color: var(--color-text-primary);">
+                        @(service.ResponseTimeMs >= 0 ? $"{service.ResponseTimeMs}ms" : "N/A")
+                    </span>
+                </div>
+                <div class="flex-between">
+                    <span>Last Checked</span>
+                    <span>@service.CheckedAt.ToString("HH:mm:ss")</span>
+                </div>
+                @if (!string.IsNullOrEmpty(service.ErrorMessage))
+                {
+                    <div style="margin-top: var(--space-xs); padding: var(--space-sm); background: var(--color-error-light); border-radius: var(--radius-sm); color: var(--color-error); font-size: 12px;">
+                        @service.ErrorMessage
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ServiceHealthDto> _services = new();
+    private bool _loading = true;
+    private DateTime? _lastChecked;
+    private Timer? _autoRefreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshHealth();
+        _autoRefreshTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshHealth();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshHealth()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        _services = await SystemHealthService.GetAllServiceHealthAsync();
+        _lastChecked = DateTime.UtcNow;
+        _loading = false;
+    }
+
+    private string AvgResponseTime
+    {
+        get
+        {
+            var valid = _services.Where(s => s.ResponseTimeMs >= 0).ToList();
+            if (valid.Count == 0) return "—";
+            return $"{valid.Average(s => s.ResponseTimeMs):F0}";
+        }
+    }
+
+    private static string StatusColor(string status) => status switch
+    {
+        "Healthy" => "var(--color-success)",
+        "Degraded" => "var(--color-warning)",
+        _ => "var(--color-error)"
+    };
+
+    public void Dispose()
+    {
+        _autoRefreshTimer?.Dispose();
+    }
+}

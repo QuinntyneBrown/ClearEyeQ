@@ -1,0 +1,174 @@
+@page "/tenants/{Id:guid}"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject TenantService TenantService
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Tenant Detail - ClearEyeQ Admin</PageTitle>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading tenant...</p>
+    </div>
+}
+else if (_tenant is null)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">?</div>
+        <p class="empty-state-text">Tenant not found.</p>
+        <button class="btn btn-secondary mt-md" @onclick="NavigateBack">Back to Tenants</button>
+    </div>
+}
+else
+{
+    <div class="flex-between mb-lg">
+        <div>
+            <button class="btn btn-ghost btn-sm" @onclick="NavigateBack" style="margin-bottom: var(--space-sm);">
+                &larr; Back to Tenants
+            </button>
+            <h2 style="font-weight: 700;">@_tenant.Name</h2>
+        </div>
+        <StatusBadge Status="@_tenant.Status" />
+    </div>
+
+    <div class="grid-2 mb-lg">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Tenant Details</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input class="form-input" @bind="_editName" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="_editStatus">
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Deleted">Deleted</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Created</label>
+                <input class="form-input" value="@_tenant.CreatedAt.ToString("yyyy-MM-dd HH:mm UTC")" readonly />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subscription Tier</label>
+                <input class="form-input" value="@(_tenant.SubscriptionTier ?? "None")" readonly />
+            </div>
+            <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-lg);">
+                <button class="btn btn-primary" @onclick="SaveChanges" disabled="@_saving">
+                    @(_saving ? "Saving..." : "Save Changes")
+                </button>
+                <button class="btn btn-secondary" @onclick="ResetForm">Cancel</button>
+            </div>
+            @if (!string.IsNullOrEmpty(_saveMessage))
+            {
+                <p class="mt-md @(_saveSuccess ? "text-success" : "text-error")" style="font-size: 13px;">@_saveMessage</p>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Tenant Users (@_users.Count)</span>
+            </div>
+            @if (_users.Count == 0)
+            {
+                <p class="text-secondary" style="font-size: 13px;">No users in this tenant.</p>
+            }
+            else
+            {
+                <div class="data-table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in _users)
+                            {
+                                <tr>
+                                    <td>@user.Name</td>
+                                    <td><span class="badge badge-primary">@user.Role</span></td>
+                                    <td><StatusBadge Status="@user.Status" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private TenantDto? _tenant;
+    private List<UserDto> _users = new();
+    private string _editName = string.Empty;
+    private string _editStatus = "Active";
+    private bool _saving;
+    private string? _saveMessage;
+    private bool _saveSuccess;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tenantTask = TenantService.GetTenantAsync(Id);
+        var usersTask = UserService.GetUsersAsync();
+
+        await Task.WhenAll(tenantTask, usersTask);
+
+        _tenant = tenantTask.Result;
+        if (_tenant is not null)
+        {
+            _editName = _tenant.Name;
+            _editStatus = _tenant.Status;
+            _users = usersTask.Result.Where(u => u.TenantId == Id).ToList();
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_tenant is null || string.IsNullOrWhiteSpace(_editName)) return;
+
+        _saving = true;
+        _saveMessage = null;
+
+        var success = await TenantService.UpdateTenantAsync(_tenant.Id, _editName, _editStatus);
+
+        _saveSuccess = success;
+        _saveMessage = success ? "Tenant updated successfully." : "Failed to update tenant. Please try again.";
+        _saving = false;
+
+        if (success)
+        {
+            _tenant.Name = _editName;
+            _tenant.Status = _editStatus;
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (_tenant is not null)
+        {
+            _editName = _tenant.Name;
+            _editStatus = _tenant.Status;
+        }
+        _saveMessage = null;
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/tenants");
+    }
+}

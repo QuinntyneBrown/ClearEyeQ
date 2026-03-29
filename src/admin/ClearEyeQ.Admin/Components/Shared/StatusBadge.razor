@@ -1,0 +1,15 @@
+<span class="badge @BadgeClass">@Status</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Status { get; set; } = string.Empty;
+
+    private string BadgeClass => Status?.ToLowerInvariant() switch
+    {
+        "healthy" or "active" => "badge-success",
+        "degraded" or "suspended" or "warning" => "badge-warning",
+        "unhealthy" or "deleted" or "error" => "badge-error",
+        "free" or "pro" or "premium" or "autonomous" => "badge-primary",
+        _ => "badge-neutral"
+    };
+}

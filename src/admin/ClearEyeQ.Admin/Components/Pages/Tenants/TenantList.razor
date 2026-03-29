@@ -1,0 +1,175 @@
+@page "/tenants"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject TenantService TenantService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Tenants - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">Tenants</h2>
+
+<div class="toolbar">
+    <div class="toolbar-left">
+        <SearchBar Placeholder="Search tenants..." OnSearch="HandleSearch" />
+    </div>
+    <div class="toolbar-right">
+        <button class="btn btn-primary" @onclick="ShowCreateDialog">
+            + Create Tenant
+        </button>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading tenants...</p>
+    </div>
+}
+else
+{
+    <DataTable TItem="TenantDto" Items="_filteredTenants" Columns="_columns">
+        <RowTemplate>
+            <td>
+                <a href="/tenants/@context.Id" style="color: var(--color-primary); text-decoration: none; font-weight: 500;">
+                    @context.Name
+                </a>
+            </td>
+            <td>@context.CreatedAt.ToString("yyyy-MM-dd")</td>
+            <td>@context.UsersCount</td>
+            <td><StatusBadge Status="@context.Status" /></td>
+            <td>
+                <div class="flex gap-sm">
+                    <button class="btn btn-ghost btn-sm" @onclick="() => NavigateToDetail(context.Id)">Edit</button>
+                    @if (context.Status == "Active")
+                    {
+                        <button class="btn btn-ghost btn-sm text-error" @onclick="() => ConfirmDeactivate(context)">Deactivate</button>
+                    }
+                </div>
+            </td>
+        </RowTemplate>
+    </DataTable>
+}
+
+@if (_showCreateDialog)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateDialog">
+        <div class="modal" @onclick:stopPropagation="true">
+            <div class="modal-title">Create Tenant</div>
+            <div class="form-group">
+                <label class="form-label">Tenant Name</label>
+                <input class="form-input" @bind="_newTenantName" placeholder="Enter tenant name" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @onclick="CloseCreateDialog">Cancel</button>
+                <button class="btn btn-primary" @onclick="CreateTenant" disabled="@string.IsNullOrWhiteSpace(_newTenantName)">
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog IsVisible="_showDeactivateDialog"
+               Title="Deactivate Tenant"
+               Message="@($"Are you sure you want to deactivate \"{_tenantToDeactivate?.Name}\"? This will suspend all users in this tenant.")"
+               ConfirmText="Deactivate"
+               IsDestructive="true"
+               OnConfirm="DeactivateTenant"
+               OnCancel="CancelDeactivate" />
+
+@code {
+    private bool _loading = true;
+    private List<TenantDto> _tenants = new();
+    private List<TenantDto> _filteredTenants = new();
+    private string _searchText = string.Empty;
+    private bool _showCreateDialog;
+    private string _newTenantName = string.Empty;
+    private bool _showDeactivateDialog;
+    private TenantDto? _tenantToDeactivate;
+
+    private readonly List<DataTable<TenantDto>.ColumnDefinition> _columns = new()
+    {
+        new() { Header = "Name", PropertyName = "Name" },
+        new() { Header = "Created", PropertyName = "CreatedAt" },
+        new() { Header = "Users", PropertyName = "UsersCount" },
+        new() { Header = "Status", PropertyName = "Status" },
+        new() { Header = "Actions" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenants();
+    }
+
+    private async Task LoadTenants()
+    {
+        _loading = true;
+        _tenants = await TenantService.GetTenantsAsync();
+        ApplyFilter();
+        _loading = false;
+    }
+
+    private void HandleSearch(string searchText)
+    {
+        _searchText = searchText;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredTenants = _tenants;
+        }
+        else
+        {
+            _filteredTenants = _tenants
+                .Where(t => t.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private void NavigateToDetail(Guid id)
+    {
+        NavigationManager.NavigateTo($"/tenants/{id}");
+    }
+
+    private void ShowCreateDialog() => _showCreateDialog = true;
+
+    private void CloseCreateDialog()
+    {
+        _showCreateDialog = false;
+        _newTenantName = string.Empty;
+    }
+
+    private async Task CreateTenant()
+    {
+        if (string.IsNullOrWhiteSpace(_newTenantName)) return;
+        await TenantService.CreateTenantAsync(_newTenantName);
+        CloseCreateDialog();
+        await LoadTenants();
+    }
+
+    private void ConfirmDeactivate(TenantDto tenant)
+    {
+        _tenantToDeactivate = tenant;
+        _showDeactivateDialog = true;
+    }
+
+    private void CancelDeactivate()
+    {
+        _showDeactivateDialog = false;
+        _tenantToDeactivate = null;
+    }
+
+    private async Task DeactivateTenant()
+    {
+        if (_tenantToDeactivate is not null)
+        {
+            await TenantService.DeactivateTenantAsync(_tenantToDeactivate.Id);
+        }
+        _showDeactivateDialog = false;
+        _tenantToDeactivate = null;
+        await LoadTenants();
+    }
+}

@@ -1,0 +1,50 @@
+@startuml
+title Patient Mobile App - Intended Core Workflow
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F7FBFF
+  BorderColor #2D5B8A
+  FontColor #10243E
+  DiamondBackgroundColor #FFF4D6
+  DiamondBorderColor #9B7A00
+  StartColor #2B8A3E
+  EndColor #C92A2A
+}
+
+|Patient|
+start
+:Register or sign in;
+:Complete profile, consent,\nand device setup;
+:Open dashboard;
+
+if (Start a new scan?) then (yes)
+  :Open guided scan flow;
+  |Mobile App|
+  :Show positioning overlay\nand real-time guidance;
+  :Capture burst frames;
+  :Show processing progress;
+  |Platform Services|
+  :Analyze scan and generate\nresults, trends, and forecast inputs;
+  |Patient|
+  :Review scan result summary;
+else (no)
+  :Review dashboard and trends;
+endif
+
+if (Needs action today?) then (yes)
+  :Open treatment or reminder details;
+  :Mark interventions complete\nor follow instructions;
+else (no)
+endif
+
+if (Risk or escalation alert?) then (yes)
+  :Review flare-up warning\nor referral prompt;
+  :Contact clinician or book follow-up;
+else (no)
+endif
+
+:Manage settings, privacy,\nconnections, and accessibility;
+stop
+@enduml

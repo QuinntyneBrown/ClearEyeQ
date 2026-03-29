@@ -1,0 +1,43 @@
+@startuml
+title Clinical Portal - Intended Review Workflow
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F8FFF8
+  BorderColor #2F6B3A
+  FontColor #102915
+  DiamondBackgroundColor #FFF4D6
+  DiamondBorderColor #9B7A00
+  StartColor #2B8A3E
+  EndColor #C92A2A
+}
+
+|Clinician|
+start
+:Sign in and complete MFA;
+:Open patient dashboard;
+:Select assigned patient;
+
+|Clinical Portal|
+:Load longitudinal scans,\ndiagnoses, treatment state,\nand referral status;
+
+|Clinician|
+:Review patient detail tabs;
+
+if (Pending treatment review?) then (yes)
+  :Open proposal and evidence;
+  :Approve or reject with rationale;
+else (no)
+endif
+
+if (Referral escalation present?) then (yes)
+  :Review referral package;
+  :Accept or decline referral;
+else (no)
+endif
+
+:Add or update clinical notes;
+:Return to dashboard or next queue item;
+stop
+@enduml

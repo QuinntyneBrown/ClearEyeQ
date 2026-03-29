@@ -1,0 +1,168 @@
+@page "/audit"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject AuditService AuditService
+
+<PageTitle>Audit Log - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">Audit Log</h2>
+
+<div class="toolbar">
+    <div class="toolbar-left">
+        <SearchBar Placeholder="Search by user..." OnSearch="HandleUserSearch" />
+        <select class="form-select" style="width: auto;" @onchange="HandleActionFilter">
+            <option value="">All Actions</option>
+            <option value="Create">Create</option>
+            <option value="Update">Update</option>
+            <option value="Delete">Delete</option>
+            <option value="Login">Login</option>
+            <option value="Logout">Logout</option>
+            <option value="RoleChange">Role Change</option>
+            <option value="StatusChange">Status Change</option>
+        </select>
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <label class="form-label" style="margin: 0; white-space: nowrap;">From:</label>
+            <input type="date" class="form-input" style="width: auto;" @bind="_dateFrom" @bind:event="onchange" @bind:after="ReloadLogs" />
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <label class="form-label" style="margin: 0; white-space: nowrap;">To:</label>
+            <input type="date" class="form-input" style="width: auto;" @bind="_dateTo" @bind:event="onchange" @bind:after="ReloadLogs" />
+        </div>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading audit log...</p>
+    </div>
+}
+else
+{
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Resource</th>
+                    <th>Tenant</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_page.Items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: var(--space-xl); color: var(--color-text-secondary);">
+                            No audit log entries found.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var entry in _page.Items)
+                    {
+                        <tr>
+                            <td style="white-space: nowrap; font-size: 13px; color: var(--color-text-secondary);">
+                                @entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                            </td>
+                            <td style="font-weight: 500;">@entry.UserName</td>
+                            <td><span class="badge badge-primary">@entry.Action</span></td>
+                            <td style="font-family: monospace; font-size: 13px;">@entry.Resource</td>
+                            <td>@(entry.TenantName ?? "—")</td>
+                            <td style="font-size: 13px; color: var(--color-text-secondary); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                @(entry.Detail ?? "—")
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (_page.TotalPages > 1)
+    {
+        <div class="pagination">
+            <span class="pagination-info">
+                Page @_page.Page of @_page.TotalPages (@_page.TotalCount total entries)
+            </span>
+            <div class="pagination-buttons">
+                <button class="btn btn-secondary btn-sm" @onclick="PreviousPage" disabled="@(_currentPage <= 1)">
+                    &larr; Previous
+                </button>
+                <button class="btn btn-secondary btn-sm" @onclick="NextPage" disabled="@(_currentPage >= _page.TotalPages)">
+                    Next &rarr;
+                </button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private AuditLogPageDto _page = new();
+    private int _currentPage = 1;
+    private string? _userSearch;
+    private string? _actionFilter;
+    private DateTime? _dateFrom;
+    private DateTime? _dateTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPage();
+    }
+
+    private async Task LoadPage()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        _page = await AuditService.SearchAuditLogsAsync(
+            dateFrom: _dateFrom,
+            dateTo: _dateTo,
+            action: _actionFilter,
+            page: _currentPage);
+
+        _loading = false;
+    }
+
+    private async Task HandleUserSearch(string text)
+    {
+        _userSearch = string.IsNullOrWhiteSpace(text) ? null : text;
+        _currentPage = 1;
+        await LoadPage();
+    }
+
+    private async Task HandleActionFilter(ChangeEventArgs e)
+    {
+        _actionFilter = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        _currentPage = 1;
+        await LoadPage();
+    }
+
+    private async Task ReloadLogs()
+    {
+        _currentPage = 1;
+        await LoadPage();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            await LoadPage();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_currentPage < _page.TotalPages)
+        {
+            _currentPage++;
+            await LoadPage();
+        }
+    }
+}

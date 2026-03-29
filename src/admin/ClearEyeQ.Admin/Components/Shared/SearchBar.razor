@@ -1,0 +1,41 @@
+<div class="search-bar">
+    <span class="search-icon">&#128269;</span>
+    <input class="form-input"
+           type="text"
+           placeholder="@Placeholder"
+           value="@_searchText"
+           @oninput="HandleInput" />
+</div>
+
+@code {
+    [Parameter]
+    public string Placeholder { get; set; } = "Search...";
+
+    [Parameter]
+    public EventCallback<string> OnSearch { get; set; }
+
+    private string _searchText = string.Empty;
+    private CancellationTokenSource? _debounceToken;
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+
+        _debounceToken?.Cancel();
+        _debounceToken = new CancellationTokenSource();
+        var token = _debounceToken.Token;
+
+        try
+        {
+            await Task.Delay(300, token);
+            if (!token.IsCancellationRequested)
+            {
+                await OnSearch.InvokeAsync(_searchText);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Debounce cancelled, ignore
+        }
+    }
+}

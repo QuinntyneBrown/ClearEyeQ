@@ -1,0 +1,43 @@
+@startuml
+title Admin Portal - Intended Operational Workflow
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #FFF9F5
+  BorderColor #8A4B2D
+  FontColor #3D1F10
+  DiamondBackgroundColor #FFF4D6
+  DiamondBorderColor #9B7A00
+  StartColor #2B8A3E
+  EndColor #C92A2A
+}
+
+|Administrator|
+start
+:Sign in and complete MFA;
+:Open admin dashboard;
+
+if (Operational issue to investigate?) then (yes)
+  |Admin Portal|
+  :Review system health\nand audit indicators;
+  |Administrator|
+  :Decide whether to escalate\nor continue investigation;
+else (no)
+endif
+
+if (Tenant or user request?) then (yes)
+  :Open tenant or user management;
+  :Create, update, suspend,\nor review access state;
+else (no)
+endif
+
+if (Plan or rollout change needed?) then (yes)
+  :Review subscription state\nand feature flags;
+  :Apply approved operational change;
+else (no)
+endif
+
+:Record or verify changes\nthrough audit history;
+stop
+@enduml

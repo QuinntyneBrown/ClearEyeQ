@@ -1,0 +1,118 @@
+@page "/system/features"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject FeatureFlagService FeatureFlagService
+
+<PageTitle>Feature Flags - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">Feature Flags</h2>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading feature flags...</p>
+    </div>
+}
+else if (_flags.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">&#9872;</div>
+        <p class="empty-state-text">No feature flags configured.</p>
+    </div>
+}
+else
+{
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Global Default</th>
+                    <th>Tenant Overrides</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var flag in _flags)
+                {
+                    <tr>
+                        <td style="font-weight: 600; font-family: monospace; font-size: 13px;">@flag.Name</td>
+                        <td style="color: var(--color-text-secondary);">@flag.Description</td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" checked="@flag.GlobalDefault"
+                                       @onchange="(e) => ToggleGlobal(flag, (bool)(e.Value ?? false))" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            @if (flag.TenantOverrides.Count == 0)
+                            {
+                                <span class="text-secondary" style="font-size: 13px;">None</span>
+                            }
+                            else
+                            {
+                                <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                                    @foreach (var ov in flag.TenantOverrides)
+                                    {
+                                        <div class="flex gap-sm" style="align-items: center; font-size: 13px;">
+                                            <span>@ov.TenantName</span>
+                                            <label class="toggle" style="transform: scale(0.8);">
+                                                <input type="checkbox" checked="@ov.Enabled"
+                                                       @onchange="(e) => ToggleTenantOverride(flag.Name, ov, (bool)(e.Value ?? false))" />
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<FeatureFlagDto> _flags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFlags();
+    }
+
+    private async Task LoadFlags()
+    {
+        _loading = true;
+        _flags = await FeatureFlagService.GetFlagsAsync();
+        _loading = false;
+    }
+
+    private async Task ToggleGlobal(FeatureFlagDto flag, bool enabled)
+    {
+        var success = await FeatureFlagService.ToggleFlagAsync(flag.Name, enabled);
+        if (success)
+        {
+            flag.GlobalDefault = enabled;
+        }
+        else
+        {
+            await LoadFlags();
+        }
+    }
+
+    private async Task ToggleTenantOverride(string flagName, TenantOverrideDto ov, bool enabled)
+    {
+        var success = await FeatureFlagService.SetTenantOverrideAsync(flagName, ov.TenantId, enabled);
+        if (success)
+        {
+            ov.Enabled = enabled;
+        }
+        else
+        {
+            await LoadFlags();
+        }
+    }
+}

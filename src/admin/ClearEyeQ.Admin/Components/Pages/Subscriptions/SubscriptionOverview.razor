@@ -1,0 +1,118 @@
+@page "/subscriptions"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject SubscriptionService SubscriptionService
+
+<PageTitle>Subscriptions - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">Subscription Overview</h2>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading subscriptions...</p>
+    </div>
+}
+else
+{
+    <div class="grid-4 mb-lg">
+        <StatCard Title="Free" Value="@_distribution.FreeCount.ToString()" Subtitle="$0/mo" ColorClass="" />
+        <StatCard Title="Pro" Value="@_distribution.ProCount.ToString()" Subtitle="Paid tier" ColorClass="accent-success" />
+        <StatCard Title="Premium" Value="@_distribution.PremiumCount.ToString()" Subtitle="Paid tier" ColorClass="accent-warning" />
+        <StatCard Title="Autonomous" Value="@_distribution.AutonomousCount.ToString()" Subtitle="Enterprise tier" ColorClass="accent-error" />
+    </div>
+
+    <div class="grid-3 mb-lg">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Monthly Recurring Revenue</span>
+            </div>
+            <div style="font-size: 28px; font-weight: 700; color: var(--color-text-primary);">
+                $@_revenue.MonthlyRecurring.ToString("N0")
+            </div>
+            <p class="text-secondary" style="font-size: 13px; margin-top: var(--space-xs);">
+                ARR: $@_revenue.AnnualRecurring.ToString("N0")
+            </p>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Avg Revenue Per User</span>
+            </div>
+            <div style="font-size: 28px; font-weight: 700; color: var(--color-text-primary);">
+                $@_revenue.AverageRevenuePerUser.ToString("N2")
+            </div>
+            <p class="text-secondary" style="font-size: 13px; margin-top: var(--space-xs);">Per active subscriber</p>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Churn Rate</span>
+            </div>
+            <div style="font-size: 28px; font-weight: 700; color: @(_revenue.ChurnRate > 5 ? "var(--color-error)" : "var(--color-text-primary)");">
+                @_revenue.ChurnRate.ToString("N1")%
+            </div>
+            <p class="text-secondary" style="font-size: 13px; margin-top: var(--space-xs);">Monthly churn</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Recent Subscription Changes</span>
+        </div>
+        @if (_subscriptions.Count == 0)
+        {
+            <p class="text-secondary">No recent subscription changes.</p>
+        }
+        else
+        {
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Current Tier</th>
+                            <th>Previous Tier</th>
+                            <th>Monthly Amount</th>
+                            <th>Status</th>
+                            <th>Changed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sub in _subscriptions.OrderByDescending(s => s.ChangedAt).Take(20))
+                        {
+                            <tr>
+                                <td style="font-weight: 500;">@sub.TenantName</td>
+                                <td><StatusBadge Status="@sub.Tier" /></td>
+                                <td>@(sub.PreviousTier ?? "—")</td>
+                                <td>$@sub.MonthlyAmount.ToString("N2")</td>
+                                <td><StatusBadge Status="@sub.Status" /></td>
+                                <td style="color: var(--color-text-secondary); font-size: 13px;">@sub.ChangedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private PlanDistributionDto _distribution = new();
+    private RevenueMetricsDto _revenue = new();
+    private List<SubscriptionDto> _subscriptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var distTask = SubscriptionService.GetPlanDistributionAsync();
+        var revenueTask = SubscriptionService.GetRevenueMetricsAsync();
+        var subsTask = SubscriptionService.GetSubscriptionsAsync();
+
+        await Task.WhenAll(distTask, revenueTask, subsTask);
+
+        _distribution = distTask.Result;
+        _revenue = revenueTask.Result;
+        _subscriptions = subsTask.Result;
+
+        _loading = false;
+    }
+}

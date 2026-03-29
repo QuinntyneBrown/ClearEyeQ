@@ -1,0 +1,166 @@
+@page "/users"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject UserService UserService
+
+<PageTitle>Users - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">User Management</h2>
+
+<div class="toolbar">
+    <div class="toolbar-left">
+        <SearchBar Placeholder="Search users..." OnSearch="HandleSearch" />
+        <select class="form-select" style="width: auto;" @onchange="HandleRoleFilter">
+            <option value="">All Roles</option>
+            <option value="Patient">Patient</option>
+            <option value="Clinician">Clinician</option>
+            <option value="Admin">Admin</option>
+        </select>
+        <select class="form-select" style="width: auto;" @onchange="HandleStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Suspended">Suspended</option>
+        </select>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading users...</p>
+    </div>
+}
+else
+{
+    <DataTable TItem="UserDto" Items="_filteredUsers" Columns="_columns">
+        <RowTemplate>
+            <td style="font-weight: 500;">@context.Name</td>
+            <td>@context.Email</td>
+            <td>
+                <select class="form-select" style="width: auto; padding: 4px 8px; font-size: 13px;"
+                        value="@context.Role"
+                        @onchange="(e) => ChangeRole(context, e.Value?.ToString())">
+                    <option value="Patient">Patient</option>
+                    <option value="Clinician">Clinician</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </td>
+            <td>@(context.TenantName ?? "—")</td>
+            <td><StatusBadge Status="@context.Status" /></td>
+            <td style="font-size: 13px; color: var(--color-text-secondary);">
+                @(context.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
+            </td>
+            <td>
+                <div class="flex gap-sm">
+                    @if (context.Status == "Active")
+                    {
+                        <button class="btn btn-ghost btn-sm text-warning" @onclick="() => ToggleStatus(context, false)">Suspend</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-ghost btn-sm text-success" @onclick="() => ToggleStatus(context, true)">Activate</button>
+                    }
+                </div>
+            </td>
+        </RowTemplate>
+    </DataTable>
+
+    <div class="pagination">
+        <span class="pagination-info">Showing @_filteredUsers.Count of @_allUsers.Count users</span>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<UserDto> _allUsers = new();
+    private List<UserDto> _filteredUsers = new();
+    private string _searchText = string.Empty;
+    private string _roleFilter = string.Empty;
+    private string _statusFilter = string.Empty;
+
+    private readonly List<DataTable<UserDto>.ColumnDefinition> _columns = new()
+    {
+        new() { Header = "Name", PropertyName = "Name" },
+        new() { Header = "Email", PropertyName = "Email" },
+        new() { Header = "Role", PropertyName = "Role" },
+        new() { Header = "Tenant", PropertyName = "TenantName" },
+        new() { Header = "Status", PropertyName = "Status" },
+        new() { Header = "Last Login", PropertyName = "LastLoginAt" },
+        new() { Header = "Actions" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        _allUsers = await UserService.GetUsersAsync();
+        ApplyFilters();
+        _loading = false;
+    }
+
+    private void HandleSearch(string text)
+    {
+        _searchText = text;
+        ApplyFilters();
+    }
+
+    private void HandleRoleFilter(ChangeEventArgs e)
+    {
+        _roleFilter = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void HandleStatusFilter(ChangeEventArgs e)
+    {
+        _statusFilter = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var result = _allUsers.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            result = result.Where(u =>
+                u.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                u.Email.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrEmpty(_roleFilter))
+        {
+            result = result.Where(u => u.Role.Equals(_roleFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrEmpty(_statusFilter))
+        {
+            result = result.Where(u => u.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredUsers = result.ToList();
+    }
+
+    private async Task ChangeRole(UserDto user, string? newRole)
+    {
+        if (string.IsNullOrEmpty(newRole) || newRole == user.Role) return;
+        var success = await UserService.UpdateUserRoleAsync(user.Id, newRole);
+        if (success)
+        {
+            user.Role = newRole;
+        }
+    }
+
+    private async Task ToggleStatus(UserDto user, bool activate)
+    {
+        var newStatus = activate ? "Active" : "Suspended";
+        var success = await UserService.UpdateUserStatusAsync(user.Id, newStatus);
+        if (success)
+        {
+            user.Status = newStatus;
+        }
+    }
+}

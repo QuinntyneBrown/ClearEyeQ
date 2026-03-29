@@ -1,0 +1,76 @@
+@typeparam TItem
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                @foreach (var col in Columns)
+                {
+                    var isCurrentSort = SortColumn == col.PropertyName;
+                    <th class="@(isCurrentSort ? "sorted" : "")"
+                        @onclick="() => OnSort(col.PropertyName)">
+                        @col.Header
+                        <span class="sort-indicator">@(isCurrentSort ? (SortAscending ? "\u25B2" : "\u25BC") : "\u25B4")</span>
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items is null || !Items.Any())
+            {
+                <tr>
+                    <td colspan="@Columns.Count" style="text-align: center; padding: var(--space-xl); color: var(--color-text-secondary);">
+                        No data available.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    <tr>@RowTemplate(item)</tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<ColumnDefinition> Columns { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<string> OnSortChanged { get; set; }
+
+    private string? SortColumn { get; set; }
+    private bool SortAscending { get; set; } = true;
+
+    private async Task OnSort(string? propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return;
+
+        if (SortColumn == propertyName)
+        {
+            SortAscending = !SortAscending;
+        }
+        else
+        {
+            SortColumn = propertyName;
+            SortAscending = true;
+        }
+
+        await OnSortChanged.InvokeAsync($"{SortColumn}:{(SortAscending ? "asc" : "desc")}");
+    }
+
+    public class ColumnDefinition
+    {
+        public string Header { get; set; } = string.Empty;
+        public string? PropertyName { get; set; }
+    }
+}

@@ -1,0 +1,67 @@
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="nav-section-label">Overview</div>
+<a class="nav-item @GetActive("/")" href="/">
+    <span class="nav-icon">&#9632;</span> Dashboard
+</a>
+
+<div class="nav-section-label">Management</div>
+<a class="nav-item @GetActive("/tenants")" href="/tenants">
+    <span class="nav-icon">&#9881;</span> Tenants
+</a>
+<a class="nav-item @GetActive("/users")" href="/users">
+    <span class="nav-icon">&#9975;</span> Users
+</a>
+<a class="nav-item @GetActive("/subscriptions")" href="/subscriptions">
+    <span class="nav-icon">&#9733;</span> Subscriptions
+</a>
+
+<div class="nav-section-label">System</div>
+<a class="nav-item @GetActive("/system/health")" href="/system/health">
+    <span class="nav-icon">&#9829;</span> System Health
+</a>
+<a class="nav-item @GetActive("/system/features")" href="/system/features">
+    <span class="nav-icon">&#9872;</span> Feature Flags
+</a>
+
+<div class="nav-section-label">Compliance</div>
+<a class="nav-item @GetActive("/audit")" href="/audit">
+    <span class="nav-icon">&#9998;</span> Audit Log
+</a>
+
+@code {
+    private string _currentUrl = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _currentUrl = GetRelativePath();
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _currentUrl = GetRelativePath();
+        StateHasChanged();
+    }
+
+    private string GetRelativePath()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        return uri.AbsolutePath;
+    }
+
+    private string GetActive(string href)
+    {
+        if (href == "/")
+        {
+            return _currentUrl == "/" ? "active" : string.Empty;
+        }
+        return _currentUrl.StartsWith(href, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

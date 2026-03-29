@@ -1,0 +1,141 @@
+@page "/"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject TenantService TenantService
+@inject UserService UserService
+@inject SubscriptionService SubscriptionService
+@inject SystemHealthService SystemHealthService
+
+<PageTitle>Dashboard - ClearEyeQ Admin</PageTitle>
+
+<h2 style="margin-bottom: var(--space-lg); font-weight: 700;">Dashboard</h2>
+
+@if (_loading)
+{
+    <div class="empty-state">
+        <div class="loading-spinner"></div>
+        <p class="mt-md">Loading dashboard...</p>
+    </div>
+}
+else
+{
+    <div class="grid-4 mb-lg">
+        <StatCard Title="Total Tenants"
+                  Value="@_totalTenants.ToString()"
+                  Subtitle="@($"{_activeTenants} active")"
+                  ColorClass="" />
+
+        <StatCard Title="Total Users"
+                  Value="@_totalUsers.ToString()"
+                  Subtitle="Across all tenants"
+                  ColorClass="accent-success" />
+
+        <StatCard Title="Active Subscriptions"
+                  Value="@_distribution.TotalCount.ToString()"
+                  Subtitle="@SubscriptionBreakdown"
+                  ColorClass="accent-warning" />
+
+        <StatCard Title="System Health"
+                  Value="@HealthSummary"
+                  Subtitle="@($"{_healthyServices}/{_totalServices} services healthy")"
+                  ColorClass="@HealthColorClass" />
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Subscription Distribution</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                <div class="flex-between">
+                    <span>Free</span>
+                    <span style="font-weight: 600;">@_distribution.FreeCount</span>
+                </div>
+                <div style="height: 8px; background: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
+                    <div style="height: 100%; width: @BarWidth(_distribution.FreeCount); background: var(--color-text-secondary); border-radius: var(--radius-full);"></div>
+                </div>
+                <div class="flex-between">
+                    <span>Pro</span>
+                    <span style="font-weight: 600;">@_distribution.ProCount</span>
+                </div>
+                <div style="height: 8px; background: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
+                    <div style="height: 100%; width: @BarWidth(_distribution.ProCount); background: var(--color-primary); border-radius: var(--radius-full);"></div>
+                </div>
+                <div class="flex-between">
+                    <span>Premium</span>
+                    <span style="font-weight: 600;">@_distribution.PremiumCount</span>
+                </div>
+                <div style="height: 8px; background: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
+                    <div style="height: 100%; width: @BarWidth(_distribution.PremiumCount); background: var(--color-warning); border-radius: var(--radius-full);"></div>
+                </div>
+                <div class="flex-between">
+                    <span>Autonomous</span>
+                    <span style="font-weight: 600;">@_distribution.AutonomousCount</span>
+                </div>
+                <div style="height: 8px; background: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
+                    <div style="height: 100%; width: @BarWidth(_distribution.AutonomousCount); background: var(--color-success); border-radius: var(--radius-full);"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Service Status</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+                @foreach (var svc in _serviceHealth)
+                {
+                    <div class="flex-between" style="padding: var(--space-xs) 0;">
+                        <span style="font-size: 13px;">@svc.Name</span>
+                        <StatusBadge Status="@svc.Status" />
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _totalTenants;
+    private int _activeTenants;
+    private int _totalUsers;
+    private PlanDistributionDto _distribution = new();
+    private List<ServiceHealthDto> _serviceHealth = new();
+    private int _healthyServices;
+    private int _totalServices;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tenantsTask = TenantService.GetTenantsAsync();
+        var usersTask = UserService.GetUsersAsync();
+        var distributionTask = SubscriptionService.GetPlanDistributionAsync();
+        var healthTask = SystemHealthService.GetAllServiceHealthAsync();
+
+        await Task.WhenAll(tenantsTask, usersTask, distributionTask, healthTask);
+
+        var tenants = tenantsTask.Result;
+        _totalTenants = tenants.Count;
+        _activeTenants = tenants.Count(t => t.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
+        _totalUsers = usersTask.Result.Count;
+        _distribution = distributionTask.Result;
+        _serviceHealth = healthTask.Result;
+        _healthyServices = _serviceHealth.Count(s => s.Status == "Healthy");
+        _totalServices = _serviceHealth.Count;
+
+        _loading = false;
+    }
+
+    private string SubscriptionBreakdown =>
+        $"F:{_distribution.FreeCount} P:{_distribution.ProCount} Pr:{_distribution.PremiumCount} A:{_distribution.AutonomousCount}";
+
+    private string HealthSummary => _healthyServices == _totalServices ? "Healthy" : $"{_totalServices - _healthyServices} Issues";
+
+    private string HealthColorClass => _healthyServices == _totalServices ? "accent-success" : "accent-error";
+
+    private string BarWidth(int count)
+    {
+        if (_distribution.TotalCount == 0) return "0%";
+        var pct = (double)count / _distribution.TotalCount * 100;
+        return $"{pct:F0}%";
+    }
+}
