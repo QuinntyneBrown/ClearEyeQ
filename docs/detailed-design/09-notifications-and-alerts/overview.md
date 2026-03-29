@@ -22,6 +22,7 @@ The Notifications and Alerts bounded context provides unified notification deliv
 - **Rate Limiting** -- prevents notification fatigue by throttling per-user, per-category delivery.
 - **Delivery Tracking** -- records every attempt with status (sent, delivered, failed, bounced) for audit and retry.
 - **Template Rendering** -- channel-specific formatting using templates with dynamic placeholders.
+- **Idempotent Event Consumption** -- processed-message tracking prevents duplicate notifications during retries or replay.
 
 ## Technology Stack
 
@@ -61,9 +62,10 @@ The Notifications and Alerts bounded context provides unified notification deliv
 | Event                        | Source Context      | Notification Category   |
 |------------------------------|---------------------|-------------------------|
 | ScanCompleted                | Scan                | ScanResult              |
-| DiagnosisGenerated           | Diagnostic          | DiagnosticResult        |
-| EscalationTriggered          | Diagnostic          | UrgentAlert             |
-| TreatmentPlanCreated         | Treatment           | TreatmentUpdate         |
+| DiagnosisCompleted           | Diagnostic          | DiagnosticResult        |
+| EscalationRecommended        | Treatment           | UrgentAlert             |
+| TreatmentPlanActivated       | Treatment           | TreatmentUpdate         |
+| InterventionAdjusted         | Treatment           | TreatmentUpdate         |
 | ReferralAccepted             | Clinical Portal     | ReferralStatus          |
 | SubscriptionChanged          | Subscription        | BillingAlert            |
 | PaymentFailed                | Subscription        | BillingAlert            |

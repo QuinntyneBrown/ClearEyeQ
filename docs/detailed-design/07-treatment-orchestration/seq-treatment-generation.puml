@@ -1,5 +1,5 @@
 @startuml seq-treatment-generation
-title Treatment Plan Generation Flow
+title Treatment Recommendation and Approval Flow
 
 skinparam defaultFontSize 11
 skinparam sequenceMessageAlign center
@@ -7,14 +7,21 @@ skinparam sequenceMessageAlign center
 participant "Service Bus" as Bus
 participant "DiagnosisCompleted\nConsumer" as Consumer
 participant "MediatR" as MediatR
-participant "CreateTreatmentPlan\nHandler" as Handler
+participant "CreateTreatmentRecommendation\nHandler" as Handler
 participant "ProtocolSelector" as Selector
+participant "SafetyGuardrail\nEvaluator" as Safety
 participant "IPharmacyClient" as Pharmacy
 participant "ITreatmentRepository\n(Cosmos)" as Repo
-participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+participant "Integration Outbox" as Outbox
+participant "Outbox Relay" as Relay
+participant "Clinical Portal" as Portal
+participant "ApprovalDecision\nConsumer" as DecisionConsumer
+participant "ActivateTreatmentPlan\nHandler" as ActivateHandler
+participant "Notifications" as Notify
+participant "FHIR Service" as Fhir
 
-Bus -> Consumer : DiagnosisCompleted event\n{diagnosisId, userId, severity}
-Consumer -> MediatR : Send(CreateTreatmentPlanCommand)
+Bus -> Consumer : DiagnosisCompleted event\n{tenantId, diagnosisId, userId, severity}
+Consumer -> MediatR : Send(CreateTreatmentRecommendationCommand)
 MediatR -> Handler : Handle(command)
 
 Handler -> Handler : Load patient history\nand contraindications
@@ -25,22 +32,39 @@ Selector --> Handler : ProtocolTemplate
 Handler -> Handler : Personalize dosing\n(weight, age, severity)
 
 Handler -> Pharmacy : QueryFormulationsAsync(criteria)
-Pharmacy --> Handler : Available formulations
+Pharmacy --> Handler : Suggested formulations only
 
-Handler -> Handler : Build TreatmentPlan aggregate\nwith Phases and Interventions
+Handler -> Safety : ValidateRecommendation(protocol, formulations)
+Safety --> Handler : Medication changes require approval\nbehavioral automations allowed
+
+Handler -> Handler : Build TreatmentPlan aggregate\nstatus = PendingApproval
 
 Handler -> Handler : Schedule behavioral\ninterventions (screen breaks,\nhydration, sleep hygiene)
 
-Handler -> Repo : SaveAsync(treatmentPlan)
+Handler -> Repo : SaveAsync(treatmentPlan)\npartitionKey=TenantId|UserId
 Repo --> Handler : Success
 
-Handler -> Publisher : PublishAsync(TreatmentPlanCreated)
-Publisher --> Handler : Acknowledged
+Handler -> Outbox : Append(TreatmentPlanProposed)
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish(TreatmentPlanProposed)
+Bus -> Portal : TreatmentPlanProposed
 
-note right of Publisher
+Portal -> Portal : Clinician reviews evidence,\ncontraindications, and draft plan
+Portal -> Bus : TreatmentPlanApproved\n{planId, clinicianId, rationale}
+Bus -> DecisionConsumer : TreatmentPlanApproved
+DecisionConsumer -> MediatR : Send(ActivateTreatmentPlanCommand)
+MediatR -> ActivateHandler : Handle(command)
+ActivateHandler -> Repo : SaveAsync(plan.Approve())
+ActivateHandler -> Outbox : Append(TreatmentPlanActivated)
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish(TreatmentPlanActivated)
+Bus -> Notify : TreatmentPlanActivated
+Bus -> Fhir : TreatmentPlanActivated
+
+note right of Portal
     Downstream subscribers:
-    - Notifications (patient alert)
-    - Clinical Portal (clinician view)
+    - Notifications (patient alert only after approval)
+    - Clinical Portal projections
     - FHIR Interoperability
 end note
 

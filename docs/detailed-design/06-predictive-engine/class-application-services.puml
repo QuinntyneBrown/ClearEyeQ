@@ -11,17 +11,20 @@ package "Application Layer" {
 
     package "Commands & Queries" {
         class GenerateForecastCommand <<IRequest>> {
+            +TenantId : Guid
             +UserId : Guid
             +TriggerSource : string
         }
 
         class DetectFlareUpRiskCommand <<IRequest>> {
+            +TenantId : Guid
             +UserId : Guid
             +EventType : string
             +EventPayload : byte[]
         }
 
         class ModelTrajectoryQuery <<IRequest>> {
+            +TenantId : Guid
             +UserId : Guid
             +HorizonMonths : int
             +IncludeTreatmentScenario : bool
@@ -43,8 +46,8 @@ package "Application Interfaces" {
     }
 
     interface IPatientHistoryRepository {
-        +GetFeatureWindowAsync(userId, days) : FeatureMatrix
-        +GetLongTermHistoryAsync(userId) : HistorySeries
+        +GetFeatureWindowAsync(tenantId, userId, days) : FeatureMatrix
+        +GetLongTermHistoryAsync(tenantId, userId) : HistorySeries
         +SavePredictionAsync(prediction) : void
     }
 

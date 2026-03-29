@@ -13,6 +13,8 @@ participant "Scan\nAggregate" as Scan
 participant "Blob Storage" as Blob
 participant "ML Sidecar\n(gRPC)" as ML
 participant "Cosmos DB" as DB
+participant "Integration\nOutbox" as Outbox
+participant "Outbox Relay" as Relay
 participant "Service Bus" as Bus
 
 == Initiate Scan ==
@@ -53,8 +55,11 @@ ML --> Med : ScanAnalysisResult\n(redness, tearFilm)
 == Persist & Publish ==
 Med -> Scan : RecordResults(redness, tearFilm)
 Scan -> Scan : Status = Completed\n+ raise ScanCompleted event
-Med -> DB : persist(Scan)
-Med -> Bus : publish ScanCompletedEvent
+Med -> DB : persist(Scan + outbox message)\npartitionKey=TenantId|UserId
+Med -> Outbox : Append(ScanCompleted)\n{tenantId, userId, scanId}
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish ScanCompleted\n(versioned envelope)
+Bus --> Relay : Accepted
 
 == Push Result to Client ==
 Hub --> App : ScanResult\n(redness, tearFilm, status)

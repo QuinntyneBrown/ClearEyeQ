@@ -128,6 +128,10 @@ provider-specific schemas from leaking into the domain.
    no update or delete operations permitted via repository.
 5. **MFA enforcement by role** -- Clinicians and Admins must enroll MFA before
    first PHI access; Patients may opt in.
+6. **Privacy erasure with immutable audit** -- Operational identity artifacts
+   (sessions, refresh tokens, profile fields) are deleted or crypto-shredded on
+   erasure requests. Append-only audit entries retain only irreversible subject
+   tokens where retention is legally required.
 
 ---
 

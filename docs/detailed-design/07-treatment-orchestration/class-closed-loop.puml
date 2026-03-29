@@ -12,6 +12,17 @@ package "Closed-Loop Services" {
         -compareToBaseline(baseline, current) : double
     }
 
+    class SafetyGuardrailEvaluator <<DomainService>> {
+        +CanAutoApplyBehavioralAdjustment(plan, proposal) : bool
+        +CanAutoApplyMedicationChange(plan, proposal) : bool
+        -requiresClinicianApproval(intervention) : bool
+    }
+
+    class AdjustmentAdvisor <<DomainService>> {
+        +BuildAdjustmentProposal(plan, measurement) : Intervention
+        -selectLeastRiskChange(plan, measurement) : Intervention
+    }
+
     class EscalationEngine <<DomainService>> {
         +Evaluate(plan, measurements) : EscalationDecision
         +GenerateReferralPackage(plan) : ReferralPackage
@@ -36,7 +47,7 @@ package "Abstractions" {
     interface ITreatmentRepository <<Repository>> {
         +GetByIdAsync(planId) : TreatmentPlan
         +SaveAsync(plan) : void
-        +GetByUserIdAsync(userId) : List<TreatmentPlan>
+        +GetByUserIdAsync(tenantId, userId) : List<TreatmentPlan>
     }
 
     interface IEfficacyCalculator <<Service>> {
@@ -44,15 +55,18 @@ package "Abstractions" {
         +CalculateTrajectory(measurements) : Trajectory
     }
 
-    interface IDomainEventPublisher <<Port>> {
-        +PublishAsync(event) : void
+    interface IIntegrationOutbox <<Port>> {
+        +Append(eventEnvelope) : void
     }
 }
 
 EfficacyTracker --> ITreatmentRepository
 EfficacyTracker --> IEfficacyCalculator
+SafetyGuardrailEvaluator --> ITreatmentRepository
+AdjustmentAdvisor --> ITreatmentRepository
+AdjustmentAdvisor --> IEfficacyCalculator
 EscalationEngine --> ITreatmentRepository
-EscalationEngine --> IDomainEventPublisher
+EscalationEngine --> IIntegrationOutbox
 ResolutionVerifier --> ITreatmentRepository
 ResolutionVerifier --> IEfficacyCalculator
 RelapsePreventionPlanner --> ITreatmentRepository

@@ -10,12 +10,14 @@ title Environmental Context -- Application Services
 package "Commands & Queries" {
 
     class CaptureEnvironmentalSnapshotCommand <<Command>> {
+        +TenantId : Guid
         +UserId : Guid
         +Latitude : double
         +Longitude : double
     }
 
     class RecordScreenTimeCommand <<Command>> {
+        +TenantId : Guid
         +UserId : Guid
         +Date : DateOnly
         +TotalMinutes : int
@@ -24,6 +26,7 @@ package "Commands & Queries" {
     }
 
     class GetEnvironmentalHistoryQuery <<Query>> {
+        +TenantId : Guid
         +UserId : Guid
         +From : DateTimeOffset
         +To : DateTimeOffset
@@ -69,7 +72,7 @@ package "Port Interfaces" {
     interface IEnvironmentalRepository <<Interface>> {
         +SaveSnapshotAsync(snapshot) : void
         +SaveScreenTimeAsync(record) : void
-        +GetHistoryAsync(userId, from, to) : List<EnvironmentalSnapshot>
+        +GetHistoryAsync(tenantId, userId, from, to) : List<EnvironmentalSnapshot>
     }
 }
 

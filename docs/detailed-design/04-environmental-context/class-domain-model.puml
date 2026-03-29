@@ -11,6 +11,7 @@ package "Environmental Context Domain" {
 
     class EnvironmentalSnapshot <<Aggregate Root>> {
         +SnapshotId : Guid
+        +TenantId : Guid
         +UserId : Guid
         +Timestamp : DateTimeOffset
         +Location : GeoLocation
@@ -56,6 +57,7 @@ package "Environmental Context Domain" {
 
     class ScreenTimeRecord <<Entity>> {
         +RecordId : Guid
+        +TenantId : Guid
         +UserId : Guid
         +Date : DateOnly
         +TotalMinutes : int

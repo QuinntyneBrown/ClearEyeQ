@@ -34,6 +34,8 @@ The FHIR Interoperability bounded context serves as the translation layer betwee
 - **Bulk Export** -- async FHIR $export operation for large datasets.
 - **Validation** -- validates generated FHIR resources against R4 profiles before transmission.
 - **Audit Trail** -- logs all data access and export operations for compliance.
+- **Idempotent Event Consumption** -- processed-message tracking keeps FHIR
+  projections consistent during retries and replay.
 
 ## Technology Stack
 
@@ -67,8 +69,9 @@ The FHIR Interoperability bounded context serves as the translation layer betwee
 | Event                        | Source Context   | Action                          |
 |------------------------------|------------------|---------------------------------|
 | ScanCompleted                | Scan             | Map to Observation              |
-| DiagnosisGenerated           | Diagnostic       | Map to DiagnosticReport         |
-| TreatmentPlanCreated         | Treatment        | Map to MedicationRequest        |
+| DiagnosisCompleted           | Diagnostic       | Map to DiagnosticReport         |
+| TreatmentPlanActivated       | Treatment        | Map to MedicationRequest        |
+| InterventionAdjusted         | Treatment        | Update MedicationRequest        |
 | ClinicalNoteAdded            | Clinical Portal  | Map to DocumentReference        |
 | PatientRegistered            | Identity         | Map to Patient resource         |
 

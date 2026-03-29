@@ -22,6 +22,8 @@ Container_Boundary(notifications, "Notifications and Alerts") {
     Component(notifApi, "Notification API", "ASP.NET Core 9 Minimal API", "REST endpoints for preferences, notification history, mark-as-read")
 
     Component(signalrHub, "SignalR Hub", "ASP.NET Core SignalR", "Real-time in-app notification delivery")
+
+    Component(outbox, "Integration Outbox", ".NET 9 Worker", "Stores NotificationDelivered and NotificationFailed transactionally and relays them idempotently")
 }
 
 ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Notifications, preferences, alert rules, delivery attempts")
@@ -42,10 +44,12 @@ Rel(alertEngine, prefService, "Resolve", "User preferences")
 Rel(prefService, rateLimiter, "Check", "Rate limits")
 Rel(rateLimiter, templateEngine, "Format", "Notification content")
 Rel(templateEngine, dispatcher, "Dispatch", "Formatted messages")
+Rel(dispatcher, outbox, "Append delivery events")
 Rel(dispatcher, firebase, "HTTP", "Push messages")
 Rel(dispatcher, signalrHub, "Invoke", "In-app messages")
 Rel(dispatcher, sendgrid, "HTTP", "Email messages")
 Rel(dispatcher, twilio, "HTTP", "SMS messages")
+Rel(outbox, serviceBus, "Relay publish", "NotificationDelivered/Failed")
 Rel(notifApi, postgres, "Npgsql", "Read/write")
 Rel(prefService, redis, "StackExchange.Redis", "Cached preferences")
 

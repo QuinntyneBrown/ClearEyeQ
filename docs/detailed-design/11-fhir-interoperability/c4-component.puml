@@ -9,7 +9,9 @@ Container_Boundary(fhir, "FHIR Interoperability") {
 
     Component(fhirApi, "FHIR API", "ASP.NET Core 9 Minimal API", "FHIR R4-compliant REST endpoints for export, import, and resource access")
 
-    Component(exportModule, "Export Module", "CQRS Handlers", "Orchestrates patient data export: gather, map, validate, package, deliver")
+    Component(exportModule, "Export Module", "CQRS Handlers", "Queues patient data export jobs and serves status checks")
+
+    Component(exportWorker, "Export Worker", ".NET 9 Background Service", "Processes queued export jobs: gather, map, validate, package, store")
 
     Component(importModule, "Import Module", "CQRS Handlers", "Processes inbound FHIR Bundles and maps to internal domain models")
 
@@ -19,7 +21,7 @@ Container_Boundary(fhir, "FHIR Interoperability") {
 
     Component(smartAuthClient, "SMART on FHIR Client", "OAuth 2.0 Client", "Handles SMART launch sequences and token management for EHR connectivity")
 
-    Component(eventConsumer, "Event Consumer", "Service Bus Subscriber", "Consumes domain events to keep FHIR resource cache current")
+    Component(eventConsumer, "Event Consumer", "Service Bus Subscriber", "Consumes canonical integration events idempotently to keep the FHIR resource cache current")
 }
 
 ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Export jobs, FHIR endpoints, mapping profiles, audit logs")
@@ -35,10 +37,14 @@ Container_Ext(webApp, "Web Application", "React SPA", "Patient-facing export req
 Rel(webApp, fhirApi, "HTTPS", "Export requests, status checks")
 Rel(fhirApi, exportModule, "MediatR", "ExportPatientDataCommand")
 Rel(fhirApi, importModule, "MediatR", "ImportClinicalDataCommand")
+Rel(exportModule, exportWorker, "Queue export jobs", "Background work")
 Rel(exportModule, mapperRegistry, "Map", "Internal models to FHIR resources")
 Rel(mapperRegistry, fhirValidator, "Validate", "Generated FHIR resources")
-Rel(exportModule, blobStorage, "Azure SDK", "Upload FHIR Bundles")
+Rel(exportWorker, mapperRegistry, "Map", "Internal models to FHIR resources")
+Rel(exportWorker, fhirValidator, "Validate", "Generated bundles")
+Rel(exportWorker, blobStorage, "Azure SDK", "Upload FHIR Bundles")
 Rel(exportModule, postgres, "Npgsql", "Export job tracking")
+Rel(exportWorker, postgres, "Npgsql", "Update export job status")
 Rel(importModule, smartAuthClient, "OAuth", "Authenticate with EHR")
 Rel(smartAuthClient, externalEhr, "HTTPS", "FHIR R4 API calls")
 Rel(serviceBus, eventConsumer, "Subscribe", "Domain events")

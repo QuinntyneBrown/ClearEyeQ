@@ -7,6 +7,7 @@ title Diagnostic Engine -- Differential Diagnosis Flow
 
 participant "Service Bus" as Bus
 participant "ScanCompleted\nHandler" as Handler
+participant "Processed Message\nStore" as Inbox
 participant "MediatR\nPipeline" as MediatR
 participant "GenerateDiagnosis\nHandler" as CmdHandler
 participant "Monitoring\nService" as MonSvc
@@ -15,9 +16,14 @@ participant "Medication\nRepository" as MedRepo
 participant "Genetic Data\nProvider" as GenProv
 participant "Python ML\n(gRPC)" as ML
 participant "Diagnostic\nRepository" as Repo
+participant "Integration\nOutbox" as Outbox
+participant "Outbox Relay" as Relay
 
-Bus -> Handler : ScanCompleted event
+Bus -> Handler : ScanCompleted event\n{tenantId, correlationId}
 activate Handler
+
+Handler -> Inbox : TryBegin(eventId)
+Inbox --> Handler : first delivery
 
 Handler -> MediatR : dispatch GenerateDiagnosisCommand
 activate MediatR
@@ -58,13 +64,15 @@ note over CmdHandler : Assemble DifferentialDiagnosis\nentities with Evidence li
 
 note over CmdHandler : Attach CausalGraph\nto session
 
-CmdHandler -> Repo : SaveSession(session)
+CmdHandler -> Repo : SaveSession(session + processed marker)
 activate Repo
 Repo --> CmdHandler : persisted
 deactivate Repo
 
-CmdHandler -> Bus : publish DiagnosisCompleted
-note right : includes SessionId,\ncondition list, severities
+CmdHandler -> Outbox : Append(DiagnosisCompleted)\n{tenantId, sessionId, severities}
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish DiagnosisCompleted
+note right : versioned envelope
 
 CmdHandler --> MediatR : SessionId
 deactivate CmdHandler

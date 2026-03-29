@@ -8,15 +8,20 @@ package "Treatment Orchestration Domain" {
 
     class TreatmentPlan <<AggregateRoot>> {
         +Id : PlanId
+        +TenantId : TenantId
         +UserId : UserId
         +DiagnosisId : DiagnosisId
         +Phases : List<TreatmentPhase>
         +EscalationRule : EscalationRule
+        +SafetyGuardrail : SafetyGuardrail
         +Status : TreatmentStatus
+        +ApprovalHistory : List<ApprovalDecision>
         +Audit : AuditMetadata
-        +AddPhase(phase) : void
-        +AdjustIntervention(phaseNum, intervention) : void
-        +Escalate(reason) : void
+        +SubmitForApproval() : void
+        +Approve(decision) : void
+        +Reject(decision) : void
+        +ApplyApprovedAdjustment(phaseNum, intervention, decision) : void
+        +RecommendEscalation(reason) : void
         +MarkResolved() : void
         +TransitionToMaintenance() : void
     }
@@ -66,6 +71,13 @@ package "Treatment Orchestration Domain" {
         +ImprovementPercent : double
     }
 
+    class ApprovalDecision <<ValueObject>> {
+        +ClinicianId : UserId
+        +Decision : ReviewDecision
+        +Rationale : string
+        +DecidedAt : DateTimeOffset
+    }
+
     class EscalationRule <<ValueObject>> {
         +ThresholdPercent : double
         +MaxDaysBeforeEscalation : int
@@ -73,13 +85,27 @@ package "Treatment Orchestration Domain" {
         +SpecialistCategory : string
     }
 
+    class SafetyGuardrail <<ValueObject>> {
+        +AllowsAutonomousMedicationChange : bool = false
+        +AllowedBehavioralAutomations : string[]
+        +MaxDoseDeltaPercent : double
+        +RequiresEscalationReview : bool
+    }
+
     enum TreatmentStatus {
         Draft
+        PendingApproval
         Active
-        Adjusting
-        Escalated
+        PendingAdjustmentApproval
+        EscalationRecommended
         Resolved
         Maintenance
+        Rejected
+    }
+
+    enum ReviewDecision {
+        Approved
+        Rejected
     }
 
     enum BehavioralType {
@@ -100,7 +126,9 @@ package "Treatment Orchestration Domain" {
 
 TreatmentPlan "1" *-- "1..*" TreatmentPhase
 TreatmentPlan *-- EscalationRule
+TreatmentPlan *-- SafetyGuardrail
 TreatmentPlan --> TreatmentStatus
+TreatmentPlan o-- "0..*" ApprovalDecision
 
 TreatmentPhase "1" *-- "1..*" Intervention
 
@@ -109,5 +137,6 @@ BehavioralIntervention --|> Intervention
 EnvironmentalIntervention --|> Intervention
 
 TreatmentPlan "1" o-- "0..*" EfficacyMeasurement
+ApprovalDecision --> ReviewDecision
 
 @enduml

@@ -8,19 +8,24 @@ title Notification Delivery Flow
 participant "Source\nContext" as source
 participant "Azure\nService Bus" as bus
 participant "Event\nConsumer" as consumer
+participant "Processed Message\nStore" as inbox
 participant "AlertRule\nEngine" as rules
 participant "Preference\nService" as prefs
 participant "QuietHours\nService" as quiet
 participant "Rate\nLimiter" as rate
 participant "Channel\nDispatcher" as dispatch
 participant "Template\nEngine" as template
+participant "Integration\nOutbox" as outbox
 database "PostgreSQL" as db
 
 == Event Received ==
 
-source -> bus : Integration Event\n(e.g., EscalationTriggered)
+source -> bus : Integration Event\n(e.g., EscalationRecommended)
 bus -> consumer : Deliver event
 activate consumer
+
+consumer -> inbox : TryBegin(eventId)
+inbox --> consumer : first delivery
 
 consumer -> rules : Evaluate(eventData)
 rules --> consumer : AlertRule matched\n(category=Urgent, priority=High)
@@ -55,7 +60,8 @@ dispatch --> consumer : DeliveryAttempt(InApp, Delivered)
 == Persist & Track ==
 
 consumer -> db : INSERT notification\n+ delivery_attempts
-consumer -> bus : NotificationDelivered event
+consumer -> outbox : Append(NotificationDelivered)
+outbox -> bus : Relay publish
 deactivate consumer
 
 @enduml

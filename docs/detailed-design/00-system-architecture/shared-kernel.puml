@@ -17,6 +17,10 @@ package "Shared Kernel" {
         +Value : Guid
     }
 
+    class PartitionKey <<ValueObject>> {
+        +Value : string
+    }
+
     class ConfidenceScore <<ValueObject>> {
         +Value : double {0.0..1.0}
         +Label : string
@@ -47,8 +51,23 @@ package "Shared Kernel" {
         +EventId : Guid
     }
 
+    class IntegrationEventEnvelope <<ValueObject>> {
+        +EventId : Guid
+        +SchemaVersion : int
+        +TenantId : TenantId
+        +SubjectId : Guid
+        +CorrelationId : Guid
+        +CausationId : Guid
+        +OccurredAtUtc : DateTimeOffset
+    }
+
     interface IAuditableEntity {
         +Audit : AuditMetadata
+    }
+
+    interface ITenantScopedEntity {
+        +TenantId : TenantId
+        +PartitionKey : PartitionKey
     }
 
     interface IRepository<T> {
@@ -65,8 +84,11 @@ package "Shared Kernel" {
     }
 
     AggregateRoot ..|> IAuditableEntity
+    AggregateRoot ..|> ITenantScopedEntity
     AggregateRoot --> AuditMetadata
     AggregateRoot --> "*" IDomainEvent
+    AggregateRoot --> PartitionKey
+    IntegrationEventEnvelope --> TenantId
 }
 
 @enduml

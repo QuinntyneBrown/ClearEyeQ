@@ -5,59 +5,103 @@ skinparam rectangleRoundCorner 8
 skinparam defaultFontSize 11
 skinparam packageStyle rectangle
 
-rectangle "**Scan Engine**\n(Publisher)" as scan #E3F2FD
-rectangle "**Monitoring**\n(Publisher)" as monitor #E3F2FD
-rectangle "**Environmental**\n(Publisher)" as env #E3F2FD
-rectangle "**Diagnostic Engine**\n(Publisher)" as diag #FFF3E0
-rectangle "**Predictive Engine**\n(Publisher)" as predict #FFF3E0
-rectangle "**Treatment**\n(Publisher)" as treat #E8F5E9
-rectangle "**Billing**\n(Publisher)" as billing #F3E5F5
+rectangle "**Scan Engine**" as scan #E3F2FD
+rectangle "**Monitoring**" as monitor #E3F2FD
+rectangle "**Environmental**" as env #E3F2FD
+rectangle "**Diagnostic Engine**" as diag #FFF3E0
+rectangle "**Predictive Engine**" as predict #FFF3E0
+rectangle "**Treatment**" as treat #E8F5E9
+rectangle "**Clinical Portal**" as portal #F5F5F5
+rectangle "**Billing**" as billing #F3E5F5
+
+rectangle "**Transactional Outbox Relay**\n(applies per publisher service)" as outbox #FFFDE7
+rectangle "**Inbox / Processed Message Store**\n(applies per subscriber service)" as inbox #E8F5E9
 
 queue "ScanCompleted" as q1
 queue "MonitoringDataReceived" as q2
-queue "EnvironmentalSnapshot" as q3
+queue "EnvironmentalSnapshotCaptured" as q3
 queue "DiagnosisCompleted" as q4
-queue "FlareUpWarning" as q5
-queue "ForecastGenerated" as q6
-queue "TreatmentPlanCreated" as q7
-queue "EscalationTriggered" as q8
-queue "InterventionAdjusted" as q9
-queue "SubscriptionChanged" as q10
+queue "ForecastGenerated" as q5
+queue "FlareUpWarning" as q6
+queue "TreatmentPlanProposed" as q7
+queue "TreatmentPlanApproved" as q8
+queue "TreatmentPlanActivated" as q9
+queue "TreatmentAdjustmentProposed" as q10
+queue "TreatmentAdjustmentApproved" as q11
+queue "InterventionAdjusted" as q12
+queue "EscalationRecommended" as q13
+queue "SubscriptionChanged" as q14
 
 rectangle "**Diagnostic Engine**\n(Subscriber)" as diagSub #FFF3E0
 rectangle "**Predictive Engine**\n(Subscriber)" as predictSub #FFF3E0
 rectangle "**Treatment**\n(Subscriber)" as treatSub #E8F5E9
 rectangle "**Notifications**\n(Subscriber)" as notifSub #FCE4EC
 rectangle "**Clinical Portal**\n(Subscriber)" as clinicSub #F5F5F5
+rectangle "**FHIR**\n(Subscriber)" as fhirSub #F5F5F5
 rectangle "**All Services**\n(Subscriber)" as allSub #F5F5F5
 
-scan --> q1
-monitor --> q2
-env --> q3
-diag --> q4
-predict --> q5
-predict --> q6
-treat --> q7
-treat --> q8
-treat --> q9
-billing --> q10
+scan --> outbox
+monitor --> outbox
+env --> outbox
+diag --> outbox
+predict --> outbox
+treat --> outbox
+portal --> outbox
+billing --> outbox
 
-q1 --> diagSub
-q1 --> treatSub
-q2 --> diagSub
-q2 --> predictSub
-q3 --> diagSub
-q3 --> predictSub
-q4 --> treatSub
-q4 --> predictSub
-q5 --> notifSub
-q5 --> treatSub
-q6 --> notifSub
-q7 --> notifSub
-q7 --> clinicSub
-q8 --> notifSub
-q8 --> clinicSub
-q9 --> notifSub
-q10 --> allSub
+outbox --> q1
+outbox --> q2
+outbox --> q3
+outbox --> q4
+outbox --> q5
+outbox --> q6
+outbox --> q7
+outbox --> q8
+outbox --> q9
+outbox --> q10
+outbox --> q11
+outbox --> q12
+outbox --> q13
+outbox --> q14
+
+q1 --> inbox
+q2 --> inbox
+q3 --> inbox
+q4 --> inbox
+q5 --> inbox
+q6 --> inbox
+q7 --> inbox
+q8 --> inbox
+q9 --> inbox
+q10 --> inbox
+q11 --> inbox
+q12 --> inbox
+q13 --> inbox
+q14 --> inbox
+
+inbox --> diagSub
+inbox --> predictSub
+inbox --> treatSub
+inbox --> notifSub
+inbox --> clinicSub
+inbox --> fhirSub
+inbox --> allSub
+
+note right of q4
+Event envelope fields:
+- EventId
+- SchemaVersion
+- TenantId
+- SubjectId
+- CorrelationId
+- CausationId
+- OccurredAtUtc
+end note
+
+note bottom of inbox
+Consumers are idempotent.
+Failures use retry with backoff, then DLQ.
+Replay tooling rehydrates projections from the outbox archive.
+end note
 
 @enduml

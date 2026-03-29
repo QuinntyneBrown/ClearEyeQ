@@ -8,6 +8,7 @@ package "Scan Engine Domain" {
 
     class Scan <<AggregateRoot>> {
         +Id : ScanId
+        +TenantId : TenantId
         +UserId : UserId
         +EyeSide : EyeSide
         +CaptureMetadata : CaptureMetadata

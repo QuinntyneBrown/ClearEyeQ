@@ -6,16 +6,24 @@ skinparam defaultFontSize 11
 
 package "Command Handlers" {
 
-    class CreateTreatmentPlanHandler <<Handler>> {
+    class CreateTreatmentRecommendationHandler <<Handler>> {
         +Handle(command) : PlanId
     }
 
-    class AdjustDoseHandler <<Handler>> {
+    class ActivateTreatmentPlanHandler <<Handler>> {
         +Handle(command) : void
     }
 
     class TrackEfficacyHandler <<Handler>> {
         +Handle(command) : EfficacyMeasurement
+    }
+
+    class ProposeAdjustmentHandler <<Handler>> {
+        +Handle(command) : AdjustmentProposalId
+    }
+
+    class ApplyApprovedAdjustmentHandler <<Handler>> {
+        +Handle(command) : void
     }
 
     class EvaluateEscalationHandler <<Handler>> {
@@ -32,7 +40,7 @@ package "Ports" {
     interface ITreatmentRepository <<Repository>> {
         +GetByIdAsync(planId) : TreatmentPlan
         +SaveAsync(plan) : void
-        +GetByUserIdAsync(userId) : List<TreatmentPlan>
+        +GetByUserIdAsync(tenantId, userId) : List<TreatmentPlan>
     }
 
     interface IEfficacyCalculator <<Service>> {
@@ -45,24 +53,41 @@ package "Ports" {
         +SubmitOrderAsync(order) : OrderConfirmation
     }
 
-    interface IDomainEventPublisher <<Port>> {
-        +PublishAsync(event) : void
+    interface ISafetyGuardrailService <<Service>> {
+        +ValidateRecommendation(plan) : GuardrailResult
+        +CanAutoApplyBehavioralAdjustment(plan, proposal) : bool
+        +CanAutoApplyMedicationChange(plan, proposal) : bool
+    }
+
+    interface IIntegrationOutbox <<Port>> {
+        +Append(eventEnvelope) : void
+    }
+
+    interface IProcessedMessageStore <<Port>> {
+        +TryBegin(eventId) : bool
     }
 }
 
-CreateTreatmentPlanHandler --> ITreatmentRepository
-CreateTreatmentPlanHandler --> IPharmacyClient
-CreateTreatmentPlanHandler --> IDomainEventPublisher
-
-AdjustDoseHandler --> ITreatmentRepository
-AdjustDoseHandler --> IEfficacyCalculator
-AdjustDoseHandler --> IDomainEventPublisher
+CreateTreatmentRecommendationHandler --> ITreatmentRepository
+CreateTreatmentRecommendationHandler --> IPharmacyClient
+CreateTreatmentRecommendationHandler --> ISafetyGuardrailService
+CreateTreatmentRecommendationHandler --> IIntegrationOutbox
+ActivateTreatmentPlanHandler --> ITreatmentRepository
+ActivateTreatmentPlanHandler --> IIntegrationOutbox
 
 TrackEfficacyHandler --> ITreatmentRepository
 TrackEfficacyHandler --> IEfficacyCalculator
 
+ProposeAdjustmentHandler --> ITreatmentRepository
+ProposeAdjustmentHandler --> IEfficacyCalculator
+ProposeAdjustmentHandler --> ISafetyGuardrailService
+ProposeAdjustmentHandler --> IIntegrationOutbox
+
+ApplyApprovedAdjustmentHandler --> ITreatmentRepository
+ApplyApprovedAdjustmentHandler --> IIntegrationOutbox
+
 EvaluateEscalationHandler --> ITreatmentRepository
-EvaluateEscalationHandler --> IDomainEventPublisher
+EvaluateEscalationHandler --> IIntegrationOutbox
 
 VerifyResolutionHandler --> ITreatmentRepository
 VerifyResolutionHandler --> IEfficacyCalculator

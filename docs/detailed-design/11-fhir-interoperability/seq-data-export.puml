@@ -9,6 +9,7 @@ actor "Patient" as patient
 participant "Web App" as app
 participant "FHIR API" as api
 participant "MediatR" as mediatr
+participant "Export Worker" as worker
 participant "Scan\nRead Service" as scan
 participant "Diagnostic\nRead Service" as diag
 participant "Treatment\nRead Service" as treat
@@ -22,54 +23,59 @@ database "PostgreSQL" as db
 patient -> app : Request "Export My Data"
 app -> api : POST /api/fhir/export
 api -> mediatr : ExportPatientDataCommand
-mediatr -> db : INSERT export_jobs\n(status=InProgress)
+mediatr -> db : INSERT export_jobs\n(status=Queued)
 mediatr --> api : 202 Accepted\n(jobId)
 api --> app : Export job started
 
-== Gather Data from All Contexts ==
+== Background Export Processing ==
 
-mediatr -> scan : GetScansByPatient(patientId)
-scan --> mediatr : List<ScanResult>
+worker -> db : SELECT next queued export job
+db --> worker : ExportJob(jobId, patientId)
 
-mediatr -> diag : GetDiagnosticsByPatient(patientId)
-diag --> mediatr : List<DiagnosticResult>
+worker -> scan : GetScansByPatient(patientId)
+scan --> worker : List<ScanResult>
 
-mediatr -> treat : GetTreatmentPlans(patientId)
-treat --> mediatr : List<TreatmentPlan>
+worker -> diag : GetDiagnosticsByPatient(patientId)
+diag --> worker : List<DiagnosticResult>
+
+worker -> treat : GetTreatmentPlans(patientId)
+treat --> worker : List<TreatmentPlan>
 
 == Map to FHIR Resources ==
 
-mediatr -> mappers : MapToPatient(profile)
-mappers --> mediatr : FHIR Patient
+worker -> mappers : MapToPatient(profile)
+mappers --> worker : FHIR Patient
 
-mediatr -> mappers : MapToObservations(scans)
-mappers --> mediatr : List<FHIR Observation>
+worker -> mappers : MapToObservations(scans)
+mappers --> worker : List<FHIR Observation>
 
-mediatr -> mappers : MapToDiagnosticReports(diagnostics)
-mappers --> mediatr : List<FHIR DiagnosticReport>
+worker -> mappers : MapToDiagnosticReports(diagnostics)
+mappers --> worker : List<FHIR DiagnosticReport>
 
-mediatr -> mappers : MapToMedicationRequests(plans)
-mappers --> mediatr : List<FHIR MedicationRequest>
+worker -> mappers : MapToMedicationRequests(plans)
+mappers --> worker : List<FHIR MedicationRequest>
 
 == Validate & Package ==
 
-mediatr -> validator : Validate(bundle)
-validator --> mediatr : ValidationResult (pass)
+worker -> validator : Validate(bundle)
+validator --> worker : ValidationResult (pass)
 
-mediatr -> mappers : CreateBundle(allResources)
-mappers --> mediatr : FHIR Bundle (JSON)
+worker -> mappers : CreateBundle(allResources)
+mappers --> worker : FHIR Bundle (JSON)
 
 == Store & Deliver ==
 
-mediatr -> blob : Upload bundle.json\n(encrypted, time-limited SAS)
-blob --> mediatr : Blob URL (SAS token)
+worker -> blob : Upload bundle.json\n(encrypted)
+blob --> worker : Blob name / object key
 
-mediatr -> db : UPDATE export_jobs\n(status=Completed, bundleUrl)
+worker -> db : UPDATE export_jobs\n(status=Completed, blobName)
 
 patient -> app : Check export status
 app -> api : GET /api/fhir/export/{jobId}
 api -> db : SELECT export_job
 db --> api : ExportJob (completed)
+api -> blob : Generate short-lived\nuser-specific SAS
+blob --> api : Download URL (ttl=5m)
 api --> app : 200 OK (downloadUrl)
 app --> patient : Download FHIR Bundle
 

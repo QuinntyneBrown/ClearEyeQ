@@ -20,6 +20,12 @@ package "Queries" <<Rectangle>> {
         + SortBy : string
     }
 
+    class GetTreatmentReviewQueueQuery <<Query>> {
+        + ClinicianId : Guid
+        + Status : TreatmentReviewStatus?
+        + ReviewType : TreatmentReviewType?
+    }
+
     class GetPatientTimelineQuery <<Query>> {
         + PatientId : Guid
         + ClinicianId : Guid
@@ -31,6 +37,30 @@ package "Commands" <<Rectangle>> {
     class AcceptReferralCommand <<Command>> {
         + ReferralId : Guid
         + ClinicianId : Guid
+    }
+
+    class ApproveTreatmentPlanCommand <<Command>> {
+        + ReviewId : Guid
+        + ClinicianId : Guid
+        + Rationale : string
+    }
+
+    class RejectTreatmentPlanCommand <<Command>> {
+        + ReviewId : Guid
+        + ClinicianId : Guid
+        + Reason : string
+    }
+
+    class ApproveTreatmentAdjustmentCommand <<Command>> {
+        + ReviewId : Guid
+        + ClinicianId : Guid
+        + Rationale : string
+    }
+
+    class RejectTreatmentAdjustmentCommand <<Command>> {
+        + ReviewId : Guid
+        + ClinicianId : Guid
+        + Reason : string
     }
 
     class DeclineReferralCommand <<Command>> {
@@ -56,18 +86,49 @@ package "Handlers" <<Rectangle>> {
         + Handle(query) : PagedResult<PatientSummaryDto>
     }
 
-    class AcceptReferralHandler <<Handler>> {
+    class GetReferralInboxHandler <<Handler>> {
+        - _readDb : IReadDbContext
+        --
+        + Handle(query) : List<ReferralDto>
+    }
+
+    class GetTreatmentReviewQueueHandler <<Handler>> {
+        - _readDb : IReadDbContext
+        --
+        + Handle(query) : List<TreatmentReviewDto>
+    }
+
+    class TreatmentReviewHandler <<Handler>> {
+        - _reviewRepository : ITreatmentReviewRepository
+        - _outbox : IIntegrationOutbox
+        --
+        + Handle(command) : Result
+    }
+
+    class ReferralHandler <<Handler>> {
         - _repository : IReferralCaseRepository
-        - _bus : IServiceBus
+        - _outbox : IIntegrationOutbox
+        --
+        + Handle(command) : Result
+    }
+
+    class AddClinicalNoteHandler <<Handler>> {
+        - _repository : IClinicalNoteRepository
+        - _outbox : IIntegrationOutbox
         --
         + Handle(command) : Result
     }
 }
 
 GetPatientListQuery --> GetPatientListHandler
-GetReferralInboxQuery --> GetPatientListHandler
-AcceptReferralCommand --> AcceptReferralHandler
-DeclineReferralCommand --> AcceptReferralHandler
-AddClinicalNoteCommand --> AcceptReferralHandler
+GetReferralInboxQuery --> GetReferralInboxHandler
+GetTreatmentReviewQueueQuery --> GetTreatmentReviewQueueHandler
+ApproveTreatmentPlanCommand --> TreatmentReviewHandler
+RejectTreatmentPlanCommand --> TreatmentReviewHandler
+ApproveTreatmentAdjustmentCommand --> TreatmentReviewHandler
+RejectTreatmentAdjustmentCommand --> TreatmentReviewHandler
+AcceptReferralCommand --> ReferralHandler
+DeclineReferralCommand --> ReferralHandler
+AddClinicalNoteCommand --> AddClinicalNoteHandler
 
 @enduml

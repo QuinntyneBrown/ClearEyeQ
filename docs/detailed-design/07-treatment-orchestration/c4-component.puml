@@ -8,22 +8,26 @@ title Treatment Orchestration — C4 Component Diagram (Level 3)
 
 Container_Boundary(treatment_service, "Treatment Orchestration Service") {
 
-    Component(api, "Treatment API", ".NET 9 / ASP.NET Core", "REST endpoints for plan management, dose adjustment, and escalation review")
+    Component(api, "Treatment API", ".NET 9 / ASP.NET Core", "REST endpoints for plan status, guardrailed behavioral actions, and clinician-review status")
 
     Component(pipeline, "MediatR Pipeline", "MediatR + FluentValidation", "CQRS dispatch with validation, authorization, and logging behaviors")
 
-    Component(handlers, "Application Handlers", "C# IRequestHandler", "CreateTreatmentPlan, AdjustDose, TrackEfficacy, EvaluateEscalation, VerifyResolution")
+    Component(handlers, "Recommendation Handlers", "C# IRequestHandler", "CreateTreatmentRecommendation, ActivateTreatmentPlan, ApplyApprovedAdjustment, TrackEfficacy, EvaluateEscalation, VerifyResolution")
 
-    Component(domain, "Domain Layer", "C# Aggregates & Services", "TreatmentPlan aggregate, EfficacyTracker, EscalationEngine, ResolutionVerifier, RelapsePreventionPlanner")
+    Component(decision_consumer, "Clinician Decision Consumers", ".NET 9 Worker Service", "Consumes TreatmentPlanApproved, TreatmentPlanRejected, TreatmentAdjustmentApproved, TreatmentAdjustmentRejected events")
 
-    Component(closed_loop, "Closed-Loop Processor", ".NET 9 Worker Service", "Consumes ScanCompleted and ForecastGenerated events; triggers efficacy tracking and adjustment logic")
+    Component(domain, "Domain Layer", "C# Aggregates & Services", "TreatmentPlan aggregate, EfficacyTracker, AdjustmentAdvisor, SafetyGuardrailEvaluator, EscalationEngine, ResolutionVerifier, RelapsePreventionPlanner")
 
-    Component(innovation, "Innovation Workers", "Python / FastAPI", "PubMed RAG, hypothesis generation, cross-patient anonymized learning, novel formulation suggestions")
+    Component(closed_loop, "Closed-Loop Processor", ".NET 9 Worker Service", "Consumes ScanCompleted and ForecastGenerated events; emits low-risk automations or clinician review requests")
 
-    Component(infra_cosmos, "Cosmos Repositories", "Azure Cosmos DB SDK", "CosmosTreatmentRepository for plan persistence, partitioned by UserId")
+    Component(innovation, "Innovation Workers", "Python / FastAPI", "PubMed RAG, hypothesis generation, de-identified outcome learning, novel formulation suggestions")
+
+    Component(infra_cosmos, "Cosmos Repositories", "Azure Cosmos DB SDK", "CosmosTreatmentRepository for plan persistence, partitioned by TenantId|UserId")
+
+    Component(outbox, "Integration Outbox", ".NET 9 Worker Service", "Stores treatment integration events transactionally and relays them idempotently")
 }
 
-ContainerDb(cosmos, "Azure Cosmos DB", "NoSQL", "Treatment plans, efficacy measurements\nPartitioned by UserId")
+ContainerDb(cosmos, "Azure Cosmos DB", "NoSQL", "Treatment plans, efficacy measurements,\noutbox records\nPartitioned by TenantId|UserId")
 
 ContainerDb(pgvector, "PostgreSQL + pgvector", "Relational + Vector", "PubMed embeddings for RAG\nliterature synthesis")
 
@@ -33,19 +37,31 @@ Container_Ext(service_bus, "Azure Service Bus", "Message Broker", "Domain event 
 
 Container_Ext(gateway, "API Gateway", "Azure APIM", "Rate limiting, TLS termination")
 
-Container_Ext(clinical_portal, "Clinical Portal", "React SPA", "Clinician dashboard for escalations")
+Container_Ext(clinical_portal, "Clinical Portal", "React SPA", "Clinician dashboard for treatment review and escalations")
+
+Container_Ext(notifications, "Notifications", ".NET Service", "Patient and clinician notifications")
+
+Container_Ext(fhir, "FHIR Service", ".NET Service", "Activated treatment plan export")
 
 Rel(gateway, api, "Routes requests", "HTTPS")
 Rel(api, pipeline, "Sends commands / queries")
 Rel(pipeline, handlers, "Dispatches to handler")
 Rel(handlers, domain, "Invokes aggregate and domain service methods")
+Rel(decision_consumer, pipeline, "Dispatches approval decisions")
 Rel(handlers, infra_cosmos, "Persists / reads via")
 Rel(handlers, innovation, "Requests formulation suggestions", "gRPC")
+Rel(closed_loop, domain, "Evaluates efficacy and guardrails")
 Rel(infra_cosmos, cosmos, "Read / Write", "SDK")
 Rel(innovation, pgvector, "Vector similarity search", "SQL")
 Rel(innovation, pharmacy, "Query formulations", "HTTPS")
 Rel(closed_loop, service_bus, "Consumes events", "AMQP")
-Rel(handlers, service_bus, "Publishes events", "AMQP")
-Rel(service_bus, clinical_portal, "EscalationTriggered", "AMQP")
+Rel(service_bus, decision_consumer, "Clinician decision events", "AMQP")
+Rel(handlers, outbox, "Append integration\nevents")
+Rel(closed_loop, outbox, "Append proposals\nand escalations")
+Rel(outbox, cosmos, "Store outbox\nrecords", "SDK")
+Rel(outbox, service_bus, "Relay publish", "AMQP")
+Rel(service_bus, clinical_portal, "TreatmentPlanProposed /\nTreatmentAdjustmentProposed /\nEscalationRecommended", "AMQP")
+Rel(service_bus, notifications, "TreatmentPlanActivated /\nInterventionAdjusted /\nEscalationRecommended", "AMQP")
+Rel(service_bus, fhir, "TreatmentPlanActivated /\nInterventionAdjusted", "AMQP")
 
 @enduml

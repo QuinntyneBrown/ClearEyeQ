@@ -24,9 +24,9 @@ causal inputs.
 | **UV Index & Humidity** | Fetches current UV index and relative humidity from weather APIs. |
 | **Screen Time Tracking** | Ingests screen time records via iOS Screen Time and Android Digital Wellbeing OS APIs through the mobile client. |
 | **Geolocation Resolution** | Resolves the user's current or home location to drive location-aware environmental queries. |
-| **Time-Series Storage** | Persists all collected data in Cosmos DB with time-series partitioning for efficient range queries. |
+| **Time-Series Storage** | Persists all collected data in Cosmos DB with tenant-rooted time-series partitioning for efficient range queries. |
 | **Data Normalization** | Normalizes heterogeneous API responses into canonical value objects with consistent units and scales. |
-| **Snapshot Publishing** | Publishes `EnvironmentalSnapshot` integration events to Azure Service Bus after each collection cycle. |
+| **Snapshot Publishing** | Publishes `EnvironmentalSnapshotCaptured` integration events to Azure Service Bus through a transactional outbox after each collection cycle. |
 
 ---
 
@@ -87,8 +87,8 @@ immutable once persisted -- environmental data is append-only.
 
 | Context | What They Consume | Mechanism |
 |---|---|---|
-| **Diagnostic Engine** | `EnvironmentalSnapshot` events for causal factor analysis | Azure Service Bus subscription |
-| **Predictive Engine** | `EnvironmentalSnapshot` events and historical time-series for 72h forecasting | Azure Service Bus subscription + query API |
+| **Diagnostic Engine** | `EnvironmentalSnapshotCaptured` events for causal factor analysis | Azure Service Bus subscription |
+| **Predictive Engine** | `EnvironmentalSnapshotCaptured` events and historical time-series for 72h forecasting | Azure Service Bus subscription + query API |
 
 ### Anti-Corruption Layer
 
@@ -121,9 +121,10 @@ differences behind a unified `IScreenTimeAdapter` interface.
 1. **Append-only snapshots** -- Environmental data is immutable once captured.
    No updates or deletes. This simplifies auditing and enables reliable
    time-series analysis.
-2. **Cosmos DB time-series partitioning** -- Partition key is `UserId`, sort key
-   is `Timestamp`. This optimizes the primary access pattern: "get environmental
-   history for a user over a date range."
+2. **Tenant-rooted time-series partitioning** -- All snapshots carry `TenantId`.
+   High-cardinality user time-series containers use the synthetic partition key
+   `TenantId|UserId`, with `Timestamp` as the primary range-query dimension.
+   This preserves tenant isolation while keeping per-user history efficient.
 3. **Scheduled background job** -- A recurring Hangfire/Quartz job triggers
    collection every 30 minutes per active user, batched to respect API rate
    limits.
@@ -136,6 +137,10 @@ differences behind a unified `IScreenTimeAdapter` interface.
 6. **Normalization at ingestion** -- All values are normalized to canonical
    units immediately upon receipt, not at query time. This keeps downstream
    consumers simple and consistent.
+7. **Immutable snapshots with privacy erasure** -- Snapshots remain append-only
+   for analytics and auditability. Privacy erasure deletes or crypto-shreds the
+   subject binding and invalidates downstream projections rather than mutating
+   historical environmental observations in place.
 
 ---
 

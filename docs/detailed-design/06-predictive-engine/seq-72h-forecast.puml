@@ -12,6 +12,8 @@ participant "GenerateForecast\nHandler" as Handler
 participant "IPatientHistory\nRepository" as History
 participant "IPredictiveMLClient\n(gRPC)" as MLClient
 participant "IForecastCache\n(Redis)" as Cache
+participant "Integration\nOutbox" as Outbox
+participant "Outbox Relay" as Relay
 participant "Azure Service Bus" as Bus
 participant "SignalR Hub" as SignalR
 
@@ -19,7 +21,7 @@ Trigger -> Controller : POST /api/predictions/forecast\n{userId}
 Controller -> MediatR : Send(GenerateForecastCommand)
 MediatR -> Handler : Handle(command)
 
-Handler -> History : GetFeatureWindowAsync(userId, 30)
+Handler -> History : GetFeatureWindowAsync(tenantId, userId, 30)
 History --> Handler : FeatureMatrix (30-day window)
 
 Handler -> MLClient : ForecastAsync(featureMatrix)
@@ -32,14 +34,16 @@ MLClient --> Handler : ForecastResult\n{days[], scores[], intervals[]}
 
 Handler -> Handler : Build Prediction aggregate\nwith ForecastWindow entities
 
-Handler -> History : SavePredictionAsync(prediction)
+Handler -> History : SavePredictionAsync(prediction)\npartitionKey=TenantId|UserId
 History --> Handler : Persisted
 
 Handler -> Cache : SetAsync(userId, forecast, TTL=1h)
 Cache --> Handler : Cached
 
-Handler -> Bus : Publish(ForecastGenerated)
-Bus --> Handler : Accepted
+Handler -> Outbox : Append(ForecastGenerated)\n{tenantId, predictionId}
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish(ForecastGenerated)
+Bus --> Relay : Accepted
 
 Handler --> MediatR : PredictionDto
 MediatR --> Controller : PredictionDto

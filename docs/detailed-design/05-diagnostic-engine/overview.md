@@ -188,7 +188,7 @@ similarity search (pgvector).
 |---|---|---|
 | **Scan Engine** | ScanCompleted event with scan metadata and feature vectors | Azure Service Bus subscription |
 | **Passive Monitoring** | MonitoringDataReceived event with sleep, blink-rate, and wearable telemetry | Azure Service Bus subscription |
-| **Environmental Context** | EnvironmentalSnapshot event with AQI, pollen, UV index, humidity | Azure Service Bus subscription |
+| **Environmental Context** | EnvironmentalSnapshotCaptured event with AQI, pollen, UV index, humidity | Azure Service Bus subscription |
 | **Identity & Access** | Authenticated user identity and tenant context | JWT bearer token |
 
 ### Downstream Consumers
@@ -214,8 +214,8 @@ third-party data formats from leaking into the domain model.
 | Integration | Direction | Protocol | Notes |
 |---|---|---|---|
 | Python ML Cluster | Outbound | gRPC | Diagnostic classification, causal inference, embeddings |
-| Azure Service Bus | Inbound | AMQP | ScanCompleted, MonitoringDataReceived, EnvironmentalSnapshot subscriptions |
-| Azure Service Bus | Outbound | AMQP | DiagnosisCompleted publication |
+| Azure Service Bus | Inbound | AMQP | ScanCompleted, MonitoringDataReceived, EnvironmentalSnapshotCaptured subscriptions |
+| Azure Service Bus | Outbound | AMQP | DiagnosisCompleted publication via transactional outbox |
 | PostgreSQL + pgvector | Internal | Npgsql | Similar-case embeddings, causal graph persistence |
 | Azure Cosmos DB | Internal | SDK (SQL API) | Diagnostic session aggregate, audit log |
 | RxNorm / OpenFDA | Outbound | REST | Medication interaction data |
@@ -244,6 +244,12 @@ third-party data formats from leaking into the domain model.
 6. **Event-sourced diagnostic sessions** -- Each diagnostic session captures
    the full evidence chain from input events through ML outputs to final
    diagnosis, supporting HIPAA audit requirements.
+7. **Inbox + outbox reliability** -- Scan-triggered diagnosis runs record the
+   consumed event ID before side effects and append `DiagnosisCompleted` to a
+   transactional outbox in the same commit as the diagnostic session.
+8. **Privacy erasure over immutable history** -- Event-sourced clinical history
+   remains append-only; privacy erasure tokenizes or removes subject identifiers
+   while preserving legally required safety and audit evidence.
 
 ---
 

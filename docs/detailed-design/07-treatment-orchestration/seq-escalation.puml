@@ -1,5 +1,5 @@
 @startuml seq-escalation
-title Specialist Escalation Flow
+title Specialist Escalation Recommendation Flow
 
 skinparam defaultFontSize 11
 skinparam sequenceMessageAlign center
@@ -7,11 +7,13 @@ skinparam sequenceMessageAlign center
 participant "EscalationEngine" as Engine
 participant "ITreatmentRepository\n(Cosmos)" as Repo
 participant "ReferralPackage\nBuilder" as Builder
-participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+participant "Integration Outbox" as Outbox
+participant "Outbox Relay" as Relay
+participant "Service Bus" as Bus
 participant "Clinical Portal" as Portal
 participant "Notifications\nService" as Notify
 
-Engine -> Repo : GetPlanWithMeasurements(planId)
+Engine -> Repo : GetPlanWithMeasurements(tenantId, planId)
 Repo --> Engine : TreatmentPlan + EfficacyHistory
 
 Engine -> Engine : Confirm efficacy below\nthreshold for N+ days
@@ -20,16 +22,17 @@ Engine -> Builder : GenerateReferralPackage(plan)
 Builder -> Builder : Compile diagnosis summary,\ntreatment history, scan trends,\nand efficacy trajectory
 Builder --> Engine : ReferralPackage
 
-Engine -> Repo : SaveAsync(plan.Escalate(reason))
+Engine -> Repo : SaveAsync(plan.RecommendEscalation(reason))
 Repo --> Engine : Success
 
-Engine -> Publisher : PublishAsync(EscalationTriggered\n{planId, referralPackage, urgency})
-Publisher --> Engine : Acknowledged
+Engine -> Outbox : Append(EscalationRecommended\n{tenantId, planId, referralPackage, urgency})
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish(EscalationRecommended)
 
-Publisher -> Portal : EscalationTriggered\n(subscription)
+Bus -> Portal : EscalationRecommended
 Portal -> Portal : Display referral in\nclinician dashboard
 
-Publisher -> Notify : EscalationTriggered\n(subscription)
+Bus -> Notify : EscalationRecommended
 Notify -> Notify : Send push notification\nto patient and clinician
 
 @enduml

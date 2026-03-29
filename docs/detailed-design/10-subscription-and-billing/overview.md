@@ -2,7 +2,11 @@
 
 ## Purpose
 
-The Subscription and Billing bounded context manages plan lifecycle, payment processing via Stripe, feature gating, and usage metering. It supports four subscription tiers (Free, Pro, Premium, Autonomous) and publishes SubscriptionChanged events consumed by other contexts for feature-access enforcement.
+The Subscription and Billing bounded context manages plan lifecycle, payment
+processing via Stripe, feature gating, and usage metering. It supports four
+subscription tiers (Free, Pro, Premium, Autonomous) and publishes
+versioned subscription events through a transactional outbox so other contexts
+can enforce feature access reliably.
 
 ## Subscription Plans
 
@@ -31,6 +35,8 @@ The Subscription and Billing bounded context manages plan lifecycle, payment pro
 - **Feature Gating** -- real-time checks whether a user's plan includes a given feature.
 - **Usage Metering** -- tracks scan counts, API calls, and storage against plan limits.
 - **Payment Failure Handling** -- grace period, dunning emails, eventual suspension.
+- **Idempotent Webhook and Event Processing** -- Stripe webhooks and metering
+  events are deduplicated before mutating subscription state.
 
 ## Technology Stack
 
@@ -40,7 +46,7 @@ The Subscription and Billing bounded context manages plan lifecycle, payment pro
 | Payments           | Stripe API (Checkout, Billing Portal)    |
 | Persistence        | PostgreSQL                               |
 | Cache              | Redis (feature-gate lookups)             |
-| Messaging          | Azure Service Bus (publish events)       |
+| Messaging          | Azure Service Bus + outbox relay         |
 
 ## Domain Model
 

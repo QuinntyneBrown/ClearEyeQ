@@ -20,7 +20,7 @@ package "Application Layer" {
         -repository : IDiagnosticRepository
         -medDb : IMedicationDatabase
         -geneticProvider : IGeneticDataProvider
-        -bus : IEventPublisher
+        -outbox : IIntegrationOutbox
         --
         +Handle(command) : DiagnosticSessionId
     }
@@ -72,12 +72,17 @@ package "Interfaces (Ports)" {
         +GetSession(sessionId, tenantId) : DiagnosticSession
         +GetSessionsByScan(scanId) : DiagnosticSession[]
     }
+
+    interface IIntegrationOutbox {
+        +Append(eventEnvelope) : void
+    }
 }
 
 GenerateDiagnosisHandler ..> IDiagnosticMLClient
 GenerateDiagnosisHandler ..> IDiagnosticRepository
 GenerateDiagnosisHandler ..> IMedicationDatabase
 GenerateDiagnosisHandler ..> IGeneticDataProvider
+GenerateDiagnosisHandler ..> IIntegrationOutbox
 GetCausalGraphHandler ..> IDiagnosticRepository
 CheckMedicationInteractionsHandler ..> IDiagnosticMLClient
 CheckMedicationInteractionsHandler ..> IMedicationDatabase

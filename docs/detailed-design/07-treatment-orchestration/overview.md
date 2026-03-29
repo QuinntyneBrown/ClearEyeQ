@@ -2,72 +2,143 @@
 
 ## Overview
 
-The Treatment Orchestration bounded context is the largest and most clinically impactful domain in ClearEyeQ. It spans three functional requirement groups --- FR-300 (Autonomous Treatment), FR-310 (Closed-Loop Optimization), and FR-320 (Therapeutic Innovation Engine) --- and is responsible for the complete treatment lifecycle: generating personalized treatment plans, dynamically adjusting interventions based on real-time scan and monitoring data, escalating to specialists when outcomes are insufficient, verifying resolution at 30/60/90-day checkpoints, and preventing relapse through ongoing behavioral and environmental recommendations.
+The Treatment Orchestration bounded context is the most clinically sensitive
+domain in ClearEyeQ. It spans FR-300, FR-310, and FR-320, but it is implemented
+as **clinician-supervised clinical decision support**, not autonomous care.
+The context generates personalized treatment recommendations, tracks efficacy
+over time, proposes evidence-backed adjustments, recommends escalation when
+outcomes are insufficient, and supports maintenance and relapse prevention after
+resolution.
 
-A distinguishing capability is the Therapeutic Innovation Engine (FR-320), which applies RAG-based literature synthesis over PubMed embeddings to generate novel treatment hypotheses, suggest compounding pharmacy formulations, and contribute to anonymized cross-patient learning.
+A distinguishing capability is the Therapeutic Innovation Engine (FR-320), which
+applies RAG-based literature synthesis over PubMed embeddings to generate novel
+treatment hypotheses and compounding suggestions for clinician review. It may
+surface options, but it does not place treatment into effect without an
+explicit clinician decision.
+
+## Clinical Safety Guardrails
+
+1. **No autonomous prescribing** --- medication initiation, discontinuation,
+   dose changes, compounding orders, and specialist-escalation decisions require
+   clinician approval before activation.
+2. **Guardrailed automation only** --- low-risk behavioral or environmental
+   interventions may be scheduled automatically only if they were already
+   approved as part of an active treatment plan.
+3. **Human-verifiable evidence** --- every recommendation and adjustment
+   includes the triggering evidence, contraindications considered, and model or
+   ruleset version used to generate it.
 
 ## Responsibilities
 
-- **Personalized Protocol Generation** --- Upon receiving a `DiagnosisCompleted` event, assess severity, patient history, and contraindications to select and personalize a multi-phase treatment protocol.
-- **Dynamic Dose Adjustment** --- Continuously recalibrate medication dosages and frequencies based on incoming scan results and monitoring data via a closed-loop feedback system.
-- **Behavioral Intervention Scheduling** --- Schedule and track non-pharmacological interventions: screen breaks, hydration reminders, sleep hygiene improvements, and environmental adjustments.
-- **Novel Formulation Suggestions** --- Query a compounding pharmacy API to suggest custom formulations when standard treatments are insufficient or contraindicated.
-- **Efficacy Tracking** --- Compute efficacy scores by comparing current scan/monitoring metrics against plan baselines, tracking improvement trajectories over time.
-- **Escalation to Specialist** --- When efficacy thresholds are not met within configured timeframes, generate a referral package and trigger specialist escalation.
-- **30/60/90-Day Resolution Verification** --- Evaluate treatment outcomes at standard checkpoints to confirm resolution or recommend plan continuation/modification.
-- **Relapse Prevention** --- After resolution, maintain a lightweight monitoring and behavioral plan to detect early regression signals.
-- **Cross-Patient Anonymized Learning** --- Aggregate de-identified treatment outcome data to improve protocol selection for future patients.
-- **Hypothesis Generation & Literature Synthesis** --- Use RAG over PubMed vector embeddings to surface relevant research findings and generate novel therapeutic hypotheses.
-- **Event Publishing** --- Emit `TreatmentPlanCreated`, `InterventionAdjusted`, and `EscalationTriggered` domain events to Azure Service Bus for downstream consumption.
+- **Treatment Recommendation Generation** --- Upon receiving a
+  `DiagnosisCompleted` event, assess severity, patient history, contraindications,
+  and approved care pathways to assemble a draft multi-phase treatment plan.
+- **Clinician Approval Workflow** --- Publish `TreatmentPlanProposed` and
+  `TreatmentAdjustmentProposed` events so clinicians can approve or reject
+  medication-affecting decisions in the Clinical Portal.
+- **Guardrailed Behavioral Scheduling** --- Schedule non-pharmacological
+  interventions such as screen breaks, hydration reminders, sleep hygiene, and
+  environmental adjustments within the boundaries of an approved plan.
+- **Novel Formulation Suggestions** --- Query a compounding pharmacy API to
+  suggest custom formulations when standard treatments are insufficient or
+  contraindicated. Suggestions remain advisory until clinician-approved.
+- **Efficacy Tracking** --- Compute efficacy scores by comparing current
+  scan/monitoring metrics against plan baselines, tracking improvement
+  trajectories over time.
+- **Adjustment Proposal Generation** --- When efficacy drops or risk rises,
+  generate structured treatment-adjustment proposals rather than silently
+  altering medication.
+- **Escalation Recommendation** --- When efficacy thresholds are not met within
+  configured timeframes, generate a referral package and publish
+  `EscalationRecommended` for clinician triage.
+- **30/60/90-Day Resolution Verification** --- Evaluate treatment outcomes at
+  standard checkpoints to confirm resolution or recommend continuation.
+- **Relapse Prevention** --- After resolution, maintain a lightweight approved
+  monitoring and behavioral plan to detect early regression signals.
+- **Cross-Patient De-identified Learning** --- Aggregate de-identified treatment
+  outcome data to improve protocol selection for future patients.
+- **Hypothesis Generation & Literature Synthesis** --- Use RAG over PubMed
+  vector embeddings to surface relevant research findings and novel therapeutic
+  hypotheses for clinician review.
 
 ## Boundaries
 
 | In Scope | Out of Scope |
-|----------|-------------|
-| Treatment plan generation and personalization | Clinical diagnosis (Diagnostic Engine) |
-| Dose adjustment and intervention scheduling | Image capture and scoring (Scan Engine) |
+|----------|--------------|
+| Draft treatment recommendation generation | Clinical diagnosis (Diagnostic Engine) |
+| Clinician approval orchestration for plans and medication changes | Autonomous prescribing or medication dose changes |
+| Guardrailed behavioral/environmental automations | Image capture and scoring (Scan Engine) |
 | Efficacy tracking and resolution verification | Passive biometric monitoring (Passive Monitoring) |
-| Specialist escalation and referral packaging | Predictive forecasting (Predictive Engine) |
-| Compounding pharmacy API integration | Push notification delivery (Notifications & Alerts) |
+| Specialist escalation recommendation and referral packaging | Predictive forecasting (Predictive Engine) |
+| Compounding suggestion queries | Push notification delivery (Notifications & Alerts) |
 | PubMed RAG and hypothesis generation | Billing and subscription gating (Subscription & Billing) |
-| Cross-patient anonymized outcome learning | FHIR export (FHIR Interoperability) |
+| De-identified outcome learning | FHIR export mechanics (FHIR Interoperability) |
 
 ## Treatment Lifecycle
 
-1. **Plan Creation** --- A `DiagnosisCompleted` event triggers assessment of severity, patient history, and available therapies. A multi-phase `TreatmentPlan` is generated and persisted.
-2. **Active Treatment** --- The patient follows the prescribed interventions (medication, behavioral, environmental). The system sends reminders and tracks adherence.
-3. **Closed-Loop Monitoring** --- Each incoming `ScanCompleted` or `ForecastGenerated` event triggers efficacy computation. Dose or schedule adjustments are made automatically when warranted.
-4. **Escalation** --- If efficacy remains below threshold after the configured number of days, the system generates a referral package and publishes `EscalationTriggered`.
-5. **Resolution Verification** --- At 30-, 60-, and 90-day checkpoints, the system evaluates whether the condition has resolved. Successful resolution transitions the plan to maintenance mode.
-6. **Relapse Prevention** --- A maintenance phase with reduced-frequency monitoring and behavioral reminders continues after resolution to detect early regression.
+1. **Recommendation Drafting** --- A `DiagnosisCompleted` event triggers
+   assessment of severity, history, contraindications, and available therapies.
+   A draft `TreatmentPlan` is generated in `PendingApproval` status.
+2. **Clinician Review** --- The service publishes `TreatmentPlanProposed`. A
+   clinician reviews the rationale, evidence, and safety checks in the Clinical
+   Portal and either approves or rejects the recommendation.
+3. **Plan Activation** --- On `TreatmentPlanApproved`, the Treatment context
+   activates the plan and publishes `TreatmentPlanActivated` for downstream
+   consumers such as Notifications, Clinical Portal projections, and FHIR.
+4. **Closed-Loop Monitoring** --- Incoming `ScanCompleted` or
+   `ForecastGenerated` events trigger efficacy computation. Low-risk behavioral
+   changes already covered by approved guardrails may be applied automatically.
+5. **Adjustment Review** --- Medication-affecting changes produce
+   `TreatmentAdjustmentProposed` and await clinician approval before any active
+   plan is modified.
+6. **Escalation Recommendation** --- If efficacy remains below threshold after
+   the configured number of days, the system generates a referral package and
+   publishes `EscalationRecommended`.
+7. **Resolution and Maintenance** --- At 30-, 60-, and 90-day checkpoints, the
+   system evaluates whether the condition has resolved. Successful resolution
+   transitions the plan to maintenance mode and activates relapse prevention.
 
 ## Domain Concepts
 
 | Concept | Description |
 |---------|-------------|
-| **TreatmentPlan** | Aggregate root representing a complete treatment program for a diagnosed condition. |
-| **TreatmentPhase** | A time-bounded stage within a plan, containing a set of interventions. |
+| **TreatmentPlan** | Aggregate root representing a clinician-approved or pending treatment program for a diagnosed condition. |
+| **TreatmentPhase** | A time-bounded stage within a plan containing a set of approved interventions. |
 | **Intervention** | Abstract base for a therapeutic action: medication, behavioral, or environmental. |
-| **MedicationIntervention** | A pharmacological intervention with drug name, dosage, and frequency. |
-| **BehavioralIntervention** | A non-pharmacological intervention such as screen breaks or sleep hygiene. |
-| **EnvironmentalIntervention** | A recommendation targeting the patient's environment (humidity, lighting). |
+| **ApprovalDecision** | Value object capturing clinician approval or rejection, rationale, and decision timestamp. |
+| **SafetyGuardrail** | Value object encoding whether an intervention may be auto-applied and what boundaries are enforced. |
 | **EfficacyMeasurement** | Value object capturing a point-in-time efficacy score against the plan baseline. |
-| **EscalationRule** | Value object encoding the threshold, timeframe, and action for specialist escalation. |
-| **TreatmentStatus** | Lifecycle enum: Draft, Active, Adjusting, Escalated, Resolved, Maintenance. |
+| **EscalationRule** | Value object encoding the threshold, timeframe, and referral specialty for escalation review. |
+| **TreatmentStatus** | Lifecycle enum: Draft, PendingApproval, Active, PendingAdjustmentApproval, EscalationRecommended, Resolved, Maintenance, Rejected. |
 
 ## Integration Points
 
 | Direction | System | Protocol | Payload |
 |-----------|--------|----------|---------|
-| Inbound | Diagnostic Engine | Service Bus | DiagnosisCompleted event |
-| Inbound | Scan Engine | Service Bus | ScanCompleted event |
-| Inbound | Predictive Engine | Service Bus | ForecastGenerated event |
-| Outbound | Azure Service Bus | AMQP | TreatmentPlanCreated, InterventionAdjusted, EscalationTriggered |
-| Outbound | Compounding Pharmacy API | HTTPS REST | Formulation queries and orders |
-| Outbound | Notifications & Alerts | Service Bus | Patient and clinician notifications |
-| Outbound | Clinical Portal | Service Bus | EscalationTriggered with referral package |
+| Inbound | Diagnostic Engine | Service Bus | `DiagnosisCompleted` |
+| Inbound | Scan Engine | Service Bus | `ScanCompleted` |
+| Inbound | Predictive Engine | Service Bus | `ForecastGenerated` |
+| Inbound | Clinical Portal | Service Bus | `TreatmentPlanApproved`, `TreatmentPlanRejected`, `TreatmentAdjustmentApproved`, `TreatmentAdjustmentRejected` |
+| Outbound | Azure Service Bus | AMQP | `TreatmentPlanProposed`, `TreatmentPlanActivated`, `TreatmentAdjustmentProposed`, `InterventionAdjusted`, `EscalationRecommended` |
+| Outbound | Compounding Pharmacy API | HTTPS REST | Formulation suggestions only |
+| Outbound | Notifications & Alerts | Service Bus | Approved-plan and escalation notifications |
+| Outbound | Clinical Portal | Service Bus | Treatment review queue and escalation recommendations |
 | Internal | PostgreSQL + pgvector | SQL | PubMed embeddings for RAG |
-| Internal | Cosmos DB | SDK | Treatment plan persistence |
+| Internal | Cosmos DB | SDK | Treatment plans, efficacy measurements, outbox records |
+
+## Reliability and Isolation
+
+- **Tenant-rooted scope** --- every treatment plan, review decision, projection,
+  and event envelope carries `TenantId`.
+- **Cosmos partitioning** --- high-cardinality treatment documents use the
+  synthetic partition key `TenantId|UserId`.
+- **Transactional outbox** --- proposal, activation, adjustment, and escalation
+  events are written to the local outbox in the same commit as the plan change.
+- **Inbox deduplication** --- clinician-decision consumers and closed-loop
+  processors persist processed-message markers before side effects.
+- **Privacy erasure** --- operational treatment plans are deleted or
+  crypto-shredded where legally permissible; immutable audit and safety records
+  retain only irreversible subject tokens.
 
 ## Diagrams
 

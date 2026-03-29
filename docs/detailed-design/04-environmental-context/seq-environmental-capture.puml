@@ -13,6 +13,8 @@ participant "OpenWeatherMapClient\n<<IWeatherProvider>>" as Weather
 participant "AmbeePollenClient\n<<IPollenProvider>>" as Pollen
 participant "EnvironmentalSnapshot\n<<Aggregate>>" as Snapshot
 participant "CosmosTimeSeriesRepository\n<<IEnvironmentalRepository>>" as Repo
+participant "Integration Outbox" as Outbox
+participant "Outbox Relay" as Relay
 participant "Azure Service Bus" as Bus
 
 Scheduler -> Job : ExecuteAsync(batchOfUsers)
@@ -39,21 +41,23 @@ loop for each active user
     Weather --> Handler : Humidity
     deactivate Weather
 
-    Handler -> Snapshot : new(userId, location, timestamp)
+    Handler -> Snapshot : new(tenantId, userId, location, timestamp)
     Handler -> Snapshot : AttachAirQuality(aqi)
     Handler -> Snapshot : AttachPollen(pollen)
     Handler -> Snapshot : AttachUV(uv)
     Handler -> Snapshot : AttachHumidity(humidity)
     Handler -> Snapshot : Finalize()
 
-    Handler -> Repo : SaveSnapshotAsync(snapshot)
+    Handler -> Repo : SaveSnapshotAsync(snapshot)\npartitionKey=TenantId|UserId
     activate Repo
     Repo --> Handler : success
     deactivate Repo
 
-    Handler -> Bus : Publish(EnvironmentalSnapshotCaptured)
+    Handler -> Outbox : Append(EnvironmentalSnapshotCaptured)\n{tenantId, userId, snapshotId}
+    Relay -> Outbox : Poll pending records
+    Relay -> Bus : Publish(EnvironmentalSnapshotCaptured)
     activate Bus
-    Bus --> Handler : ack
+    Bus --> Relay : ack
     deactivate Bus
 end
 

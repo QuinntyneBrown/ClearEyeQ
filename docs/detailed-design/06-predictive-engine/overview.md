@@ -14,7 +14,7 @@ The Predictive Engine bounded context is responsible for forward-looking ocular 
 | **Trigger Pattern Identification** | Mine historical data to surface recurring trigger combinations (e.g., high pollen + poor sleep) that precede symptom spikes. |
 | **Similar-Patient Retrieval** | Query pgvector embeddings to find patients with analogous histories, improving forecast calibration and trajectory confidence. |
 | **Forecast Caching** | Cache active forecasts in Redis so downstream consumers (mobile app, clinical portal) receive sub-millisecond reads. |
-| **Event Publishing** | Emit `ForecastGenerated` and `FlareUpWarning` domain events to Azure Service Bus for consumption by Notifications, Treatment Orchestration, and Clinical Portal. |
+| **Event Publishing** | Emit `ForecastGenerated` and `FlareUpWarning` integration events through a transactional outbox for consumption by Notifications, Treatment Orchestration, and Clinical Portal. |
 
 ## Boundaries
 
@@ -61,9 +61,9 @@ A pgvector-backed nearest-neighbor retrieval system. Each patient's longitudinal
 |-----------|--------|----------|---------|
 | Inbound | Scan Engine | Service Bus | ScanCompleted event |
 | Inbound | Passive Monitoring | Service Bus | MonitoringDataReceived event |
-| Inbound | Environmental Context | Service Bus | EnvironmentalSnapshotUpdated event |
+| Inbound | Environmental Context | Service Bus | EnvironmentalSnapshotCaptured event |
 | Inbound | Diagnostic Engine | Service Bus | DiagnosisCompleted event |
-| Outbound | Azure Service Bus | AMQP | ForecastGenerated, FlareUpWarning events |
+| Outbound | Azure Service Bus | AMQP | ForecastGenerated, FlareUpWarning events via transactional outbox |
 | Internal | Python ML Workers | gRPC | Forecast requests / responses |
 | Internal | PostgreSQL + pgvector | SQL | Patient embeddings, similarity search |
 | Internal | Redis | StackExchange.Redis | Forecast cache (read/write) |
@@ -78,6 +78,12 @@ A pgvector-backed nearest-neighbor retrieval system. Each patient's longitudinal
 4. **pgvector for similarity search** -- Embedding-based retrieval leverages PostgreSQL's existing presence in the stack, avoiding a separate vector database.
 5. **gRPC between .NET and Python** -- Binary protocol minimizes serialization overhead for the dense numeric feature vectors exchanged during inference.
 6. **Two-scenario trajectory modeling** -- Presenting with-treatment vs. without-treatment projections supports informed clinical decision-making and patient motivation.
+7. **Tenant-rooted history access** -- Prediction aggregates and feature windows
+   carry `TenantId`; high-cardinality prediction documents use `TenantId|UserId`
+   as the partition key so scaling does not weaken isolation.
+8. **Inbox + outbox reliability** -- Event-driven flare-up detection records the
+   processed message ID before side effects and publishes warnings through the
+   predictive outbox relay.
 
 ## HIPAA Compliance
 
@@ -85,6 +91,7 @@ A pgvector-backed nearest-neighbor retrieval system. Each patient's longitudinal
 - Redis cache entries contain no directly identifying PHI; forecasts are keyed by opaque `PredictionId`.
 - Audit metadata is attached to every Prediction aggregate for full access traceability.
 - Patient similarity search operates on de-identified embeddings; no raw PHI is stored in the vector index.
+- Privacy erasure removes operational prediction records and cache entries while preserving only de-identified learning artifacts approved for retention.
 
 ## Diagrams
 

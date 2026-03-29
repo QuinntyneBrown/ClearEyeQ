@@ -14,7 +14,7 @@ The Scan Engine bounded context is responsible for the full lifecycle of an eye 
 - **Tear Film Analysis** --- detect interference patterns and compute tear film stability metrics.
 - **Scan History** --- persist all scan records and images for longitudinal tracking.
 - **Scan Comparison** --- compute deltas between the current scan and a baseline (previous or user-selected) scan.
-- **Event Publishing** --- emit `ScanCompleted` domain events to Azure Service Bus so downstream contexts (Diagnostic Engine, Predictive Engine, Notifications) can react.
+- **Event Publishing** --- emit `ScanCompleted` integration events through a transactional outbox so downstream contexts (Diagnostic Engine, Predictive Engine, Billing) can react reliably.
 
 ## Boundaries
 
@@ -58,13 +58,20 @@ The Scan aggregate root, ScanImage entity, value objects (CaptureMetadata, Ambie
 A gRPC service running in a separate container. Hosts the image preprocessor (OpenCV), positioning model (eye detection + alignment scoring), redness scorer (ONNX Runtime), and tear film analyzer (interference pattern detection).
 
 ### Azure Blob Storage
-Stores raw and preprocessed scan images. Container per user, blobs keyed by `{ScanId}/{FrameIndex}.webp`.
+Stores raw and preprocessed scan images in tenant-scoped containers. Blobs are keyed by `{TenantId}/{UserId}/{ScanId}/{FrameIndex}.webp`.
 
 ### Azure Cosmos DB
-Persists Scan aggregate state, including all value objects, in a single document per scan. Partition key is `UserId`.
+Persists Scan aggregate state, including all value objects, in a single document per scan. All documents carry `TenantId`; high-cardinality scan records use the synthetic partition key `TenantId|UserId`.
 
 ### Azure Service Bus
-Receives `ScanCompleted` events published after successful processing. Subscriptions exist for Diagnostic Engine, Predictive Engine, and Notification Service.
+Receives versioned `ScanCompleted` integration events relayed from the scan outbox after the scan commit succeeds. Subscribers process them idempotently via inbox deduplication.
+
+## Reliability and Isolation
+
+- **Tenant-rooted scope** --- every scan aggregate, blob path, cache entry, and integration event carries `TenantId`.
+- **Transactional outbox** --- `ScanCompleted` is written to the local outbox in the same commit as the completed scan record.
+- **Idempotent consumers** --- downstream services acknowledge only after persisting their processed-message marker.
+- **Privacy erasure** --- operational scan records and blobs are deleted or cryptographically shredded through the platform privacy-erasure workflow; immutable audit references retain only irreversible tokens.
 
 ## Diagrams
 

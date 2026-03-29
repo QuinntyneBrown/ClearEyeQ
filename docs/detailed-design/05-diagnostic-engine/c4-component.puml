@@ -9,7 +9,7 @@ Container_Boundary(diag_svc, "Diagnostic Service (.NET 9)") {
 
     Component(api, "Diagnostic API", "ASP.NET Core", "REST endpoints for\ndiagnosis queries and\nclinician review")
 
-    Component(bus_handler, "Event Handlers", "Azure Service Bus\nConsumer", "Subscribes to\nScanCompleted,\nMonitoringDataReceived,\nEnvironmentalSnapshot")
+    Component(bus_handler, "Event Handlers", "Azure Service Bus\nConsumer", "Subscribes to\nScanCompleted,\nMonitoringDataReceived,\nEnvironmentalSnapshotCaptured")
 
     Component(mediatr, "MediatR Pipeline", "MediatR + Behaviors", "Command/Query dispatch,\nvalidation, logging")
 
@@ -21,7 +21,7 @@ Container_Boundary(diag_svc, "Diagnostic Service (.NET 9)") {
 
     Component(repo, "Diagnostic Repository", "EF Core + Npgsql", "Persists sessions,\ndiagnoses, causal graphs")
 
-    Component(event_pub, "Event Publisher", "Azure Service Bus\nProducer", "Publishes\nDiagnosisCompleted")
+    Component(event_outbox, "Integration Outbox", "Cosmos + Worker", "Stores DiagnosisCompleted\ntransactionally and relays it\nidempotently")
 }
 
 Container_Boundary(ml_cluster, "Python ML Cluster") {
@@ -50,8 +50,9 @@ Rel(cmd_handler, repo, "Persist session")
 Rel(query_handlers, repo, "Read data")
 Rel(repo, cosmos, "Sessions, audit", "SDK")
 Rel(repo, pg, "Graphs, embeddings", "Npgsql")
-Rel(cmd_handler, event_pub, "Publish result")
-Rel(event_pub, sbus, "DiagnosisCompleted", "AMQP")
+Rel(cmd_handler, event_outbox, "Append result event")
+Rel(event_outbox, cosmos, "Store outbox\nrecords", "SDK")
+Rel(event_outbox, sbus, "Relay DiagnosisCompleted", "AMQP")
 
 LAYOUT_WITH_LEGEND()
 

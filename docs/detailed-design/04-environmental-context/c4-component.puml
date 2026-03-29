@@ -19,15 +19,17 @@ Container_Boundary(env, "Environmental Service") {
 
     Component(screenBridge, "ScreenTimeOSBridge", "Adapter", "Normalizes iOS Screen Time\nand Android Digital Wellbeing\ndata into canonical records")
 
-    Component(repo, "CosmosTimeSeriesRepository", "Cosmos DB SDK", "Persists snapshots and\nscreen time with time-series\npartitioning by UserId")
+    Component(repo, "CosmosTimeSeriesRepository", "Cosmos DB SDK", "Persists snapshots and\nscreen time with tenant-rooted\ntime-series partitioning")
+
+    Component(outbox, "Integration Outbox", "Cosmos + Worker", "Stores EnvironmentalSnapshotCaptured\nevents transactionally and\nrelays them idempotently")
 }
 
 System_Ext(openweather, "OpenWeatherMap / IQAir", "Air quality, UV,\nhumidity APIs")
 System_Ext(ambee, "Ambee Pollen API", "Pollen concentration\ndata provider")
 System_Ext(mobile, "Mobile App", "Pushes screen time\nrecords to API")
 
-ContainerDb(cosmos, "Cosmos DB", "Time-Series Container", "Environmental snapshots\nand screen time records")
-Container(bus, "Azure Service Bus", "Message Broker", "EnvironmentalSnapshotCaptured\nevents for downstream contexts")
+ContainerDb(cosmos, "Cosmos DB", "Time-Series Container", "Environmental snapshots,\nscreen time, and outbox records\nPartitioned by TenantId|UserId")
+Container(bus, "Azure Service Bus", "Message Broker", "Versioned integration events")
 
 Rel(job, handler, "Dispatches command", "MediatR")
 Rel(api, screenHandler, "Dispatches command", "MediatR")
@@ -37,11 +39,13 @@ Rel(handler, pollenAdapter, "Fetches pollen data")
 Rel(screenHandler, screenBridge, "Normalizes records")
 Rel(handler, repo, "Persists snapshots")
 Rel(screenHandler, repo, "Persists screen time")
-Rel(handler, bus, "Publishes events")
+Rel(handler, outbox, "Appends integration\nevents")
 Rel(weatherAdapter, openweather, "REST / JSON", "HTTPS")
 Rel(pollenAdapter, ambee, "REST / JSON", "HTTPS")
 Rel(mobile, api, "POST screen time", "HTTPS")
 Rel(repo, cosmos, "Read / Write", "Cosmos SDK")
+Rel(outbox, cosmos, "Store outbox\nrecords", "Cosmos SDK")
+Rel(outbox, bus, "Relay publish", "AMQP")
 
 LAYOUT_WITH_LEGEND()
 

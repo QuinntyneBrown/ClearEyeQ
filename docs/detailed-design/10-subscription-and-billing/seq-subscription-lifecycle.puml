@@ -10,6 +10,9 @@ participant "Web App" as app
 participant "Billing API" as api
 participant "MediatR" as mediatr
 participant "Subscription\nRepository" as repo
+participant "Processed Message\nStore" as inbox
+participant "Integration\nOutbox" as outbox
+participant "Outbox Relay" as relay
 database "PostgreSQL" as db
 participant "Stripe API" as stripe
 participant "Azure\nService Bus" as bus
@@ -33,9 +36,13 @@ stripe --> app : Redirect to success page
 stripe -> api : POST /webhooks/stripe\n(checkout.session.completed)
 activate api
 api -> mediatr : HandleStripeWebhookCommand
+mediatr -> inbox : TryBegin(stripeEventId)
+inbox --> mediatr : first delivery
 mediatr -> repo : Create Subscription
 repo -> db : INSERT subscriptions\n(status=Active, plan=Pro)
-mediatr -> bus : SubscriptionCreated event
+mediatr -> outbox : Append(SubscriptionCreated)
+relay -> outbox : Poll pending records
+relay -> bus : Publish(SubscriptionCreated)
 deactivate api
 
 == Feature Gate Check ==
@@ -64,9 +71,13 @@ deactivate meter
 stripe -> api : POST /webhooks/stripe\n(invoice.payment_failed)
 activate api
 api -> mediatr : HandleStripeWebhookCommand
+mediatr -> inbox : TryBegin(stripeEventId)
+inbox --> mediatr : first delivery
 mediatr -> repo : subscription.MarkPastDue()
 repo -> db : UPDATE status=PastDue
-mediatr -> bus : PaymentFailed event
+mediatr -> outbox : Append(PaymentFailed)
+relay -> outbox : Poll pending records
+relay -> bus : Publish(PaymentFailed)
 note right of bus : Notification context\nsends dunning email
 deactivate api
 

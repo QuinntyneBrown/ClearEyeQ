@@ -18,6 +18,7 @@ package "Predictive Engine Domain" {
 
     class Prediction <<Aggregate Root>> {
         +PredictionId : Guid
+        +TenantId : Guid
         +UserId : Guid
         +GeneratedAt : DateTimeOffset
         +ExpiresAt : DateTimeOffset

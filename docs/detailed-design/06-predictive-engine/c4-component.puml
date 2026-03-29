@@ -11,7 +11,9 @@ Container_Boundary(predictive, "Predictive Engine") {
 
     Component(hub, "SignalR Hub", ".NET 9 / SignalR", "Real-time forecast push\nto connected clients")
 
-    Component(consumer, "Event Consumers", ".NET 9", "Service Bus subscribers for\nScanCompleted, MonitoringData,\nEnvironmentalSnapshot events")
+    Component(consumer, "Event Consumers", ".NET 9", "Service Bus subscribers for\nScanCompleted, MonitoringData,\nEnvironmentalSnapshotCaptured events")
+
+    Component(outbox, "Integration Outbox", ".NET 9 Worker", "Stores ForecastGenerated and\nFlareUpWarning transactionally\nand relays them idempotently")
 
     Component(grpc_client, "ML gRPC Client", ".NET 9 / Grpc.Net", "Typed client proxying requests\nto Python ML workers")
 
@@ -24,10 +26,10 @@ Container_Boundary(predictive, "Predictive Engine") {
     Component(similarity, "PatientSimilaritySearch", "Python / pgvector", "Autoencoder embeddings +\nk-NN retrieval")
 }
 
-ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Prediction aggregates")
+ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Prediction aggregates\nPartitioned by TenantId|UserId")
 ContainerDb(pg, "PostgreSQL + pgvector", "PostgreSQL", "Patient embeddings,\nhistorical features")
 ContainerDb(redis, "Redis", "Azure Redis", "Forecast cache\n(TTL = 1 hour)")
-Container(bus, "Service Bus", "Azure Service Bus", "Domain events")
+Container(bus, "Service Bus", "Azure Service Bus", "Versioned integration events")
 
 Rel(api, handlers, "Dispatches commands/queries")
 Rel(consumer, handlers, "Dispatches commands")
@@ -40,7 +42,9 @@ Rel(trajectory, similarity, "Calibration query")
 Rel(similarity, pg, "Vector search", "SQL")
 Rel(handlers, cosmos, "Read/Write", "SDK")
 Rel(handlers, redis, "Cache R/W", "StackExchange.Redis")
-Rel(handlers, bus, "Publish events", "AMQP")
+Rel(handlers, outbox, "Append integration\nevents")
+Rel(outbox, cosmos, "Store outbox\nrecords", "SDK")
+Rel(outbox, bus, "Relay publish", "AMQP")
 Rel(bus, consumer, "Subscriptions", "AMQP")
 Rel(handlers, hub, "Push forecasts")
 

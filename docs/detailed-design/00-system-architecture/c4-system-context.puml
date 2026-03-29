@@ -6,7 +6,7 @@ title ClearEyeQ — System Context (C4 Level 1)
 Person(patient, "Patient", "Chronic eye redness sufferer\nor preventive optimizer")
 Person(clinician, "Clinician", "Ophthalmologist or\noptometrist")
 
-System(cleareyeq, "ClearEyeQ Platform", "AI-powered autonomous\nocular health system")
+System(cleareyeq, "ClearEyeQ Platform", "AI-powered clinician-supervised\nocular health platform")
 
 System_Ext(healthkit, "Apple HealthKit /\nGoogle Fit", "Sleep, heart rate,\nactivity data")
 System_Ext(wearable, "Oura / Whoop /\nCPAP", "Sleep stages, HRV,\nSpO2 data")

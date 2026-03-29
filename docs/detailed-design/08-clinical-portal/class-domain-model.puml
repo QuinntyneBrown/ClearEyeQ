@@ -8,6 +8,7 @@ title Clinical Portal - Domain Model
 package "Clinical Portal Domain" {
 
     class ClinicalUser <<Entity>> {
+        + TenantId : Guid
         + UserId : Guid
         + FullName : string
         + Specialty : string
@@ -17,6 +18,7 @@ package "Clinical Portal Domain" {
 
     class PatientAssignment <<Aggregate Root>> {
         + AssignmentId : Guid
+        + TenantId : Guid
         + ClinicalUserId : Guid
         + PatientId : Guid
         + AssignedAt : DateTimeOffset
@@ -28,6 +30,7 @@ package "Clinical Portal Domain" {
 
     class ReferralCase <<Aggregate Root>> {
         + ReferralId : Guid
+        + TenantId : Guid
         + PatientId : Guid
         + AssignedClinicianId : Guid?
         + EscalationReason : string
@@ -39,8 +42,23 @@ package "Clinical Portal Domain" {
         + Decline(clinicianId, reason) : void
     }
 
+    class TreatmentReviewTask <<Aggregate Root>> {
+        + ReviewId : Guid
+        + TenantId : Guid
+        + TreatmentPlanId : Guid
+        + PatientId : Guid
+        + AssignedClinicianId : Guid?
+        + ReviewType : TreatmentReviewType
+        + Status : TreatmentReviewStatus
+        + CreatedAt : DateTimeOffset
+        --
+        + Approve(clinicianId, rationale) : void
+        + Reject(clinicianId, reason) : void
+    }
+
     class ClinicalNote <<Aggregate Root>> {
         + NoteId : Guid
+        + TenantId : Guid
         + PatientId : Guid
         + AuthorId : Guid
         + Content : string
@@ -51,6 +69,7 @@ package "Clinical Portal Domain" {
     }
 
     class PatientSummaryReadModel <<Read Model>> {
+        + TenantId : Guid
         + PatientId : Guid
         + FullName : string
         + LastScanDate : DateTimeOffset?
@@ -59,6 +78,7 @@ package "Clinical Portal Domain" {
     }
 
     class ScanResultReadModel <<Read Model>> {
+        + TenantId : Guid
         + ScanId : Guid
         + PatientId : Guid
         + ScanType : string
@@ -67,6 +87,7 @@ package "Clinical Portal Domain" {
     }
 
     class DiagnosticReadModel <<Read Model>> {
+        + TenantId : Guid
         + DiagnosticId : Guid
         + PatientId : Guid
         + Condition : string
@@ -75,18 +96,42 @@ package "Clinical Portal Domain" {
     }
 
     class TreatmentPlanReadModel <<Read Model>> {
+        + TenantId : Guid
         + TreatmentPlanId : Guid
         + PatientId : Guid
         + PlanSummary : string
         + Status : string
         + CreatedAt : DateTimeOffset
     }
+
+    class TreatmentReviewReadModel <<Read Model>> {
+        + TenantId : Guid
+        + ReviewId : Guid
+        + TreatmentPlanId : Guid
+        + PatientId : Guid
+        + ReviewType : string
+        + Status : string
+        + CreatedAt : DateTimeOffset
+    }
+
+    enum TreatmentReviewType {
+        InitialPlan
+        MedicationAdjustment
+    }
+
+    enum TreatmentReviewStatus {
+        Pending
+        Approved
+        Rejected
+    }
 }
 
 ClinicalUser "1" -- "*" PatientAssignment : manages >
 ClinicalUser "1" -- "*" ReferralCase : reviews >
+ClinicalUser "1" -- "*" TreatmentReviewTask : approves >
 ClinicalUser "1" -- "*" ClinicalNote : authors >
 PatientSummaryReadModel .. ScanResultReadModel : references
 PatientSummaryReadModel .. DiagnosticReadModel : references
+TreatmentPlanReadModel .. TreatmentReviewReadModel : references
 
 @enduml

@@ -11,16 +11,20 @@ Container_Boundary(portal, "Clinical Portal") {
 
     Component(bff, "BFF API", "ASP.NET Core 9 Minimal API", "Backend-for-Frontend serving the React app with aggregated read models")
 
-    Component(projections, "Read-Model Projections", "MediatR Event Handlers", "Projects events from Scan, Diagnostic, Treatment contexts into local read models")
+    Component(projections, "Read-Model Projections", "MediatR Event Handlers", "Projects events from Scan, Diagnostic, and Treatment contexts into local read models and review tasks")
+
+    Component(reviewModule, "Treatment Review Module", "CQRS Handlers", "Manages clinician approval and rejection of treatment plans and medication adjustments")
 
     Component(referralModule, "Referral Module", "CQRS Handlers", "Manages ReferralCase lifecycle: create, accept, decline")
 
     Component(notesModule, "Clinical Notes Module", "CQRS Handlers", "Manages ClinicalNote creation and amendment")
 
     Component(signalrHub, "SignalR Hub", "ASP.NET Core SignalR", "Real-time updates to clinician dashboards")
+
+    Component(outbox, "Integration Outbox", ".NET 9 Worker", "Stores clinician decisions transactionally and relays them idempotently")
 }
 
-ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Read models, referral cases, clinical notes, patient assignments")
+ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Read models, treatment review tasks, referral cases, clinical notes, patient assignments")
 
 ContainerDb(redis, "Redis Cache", "Redis 7", "Cached patient summaries and session state")
 
@@ -30,6 +34,7 @@ Container_Ext(identityCtx, "Identity Context", "Auth Provider", "JWT token valid
 
 Rel(react, bff, "HTTPS / JSON", "REST API calls")
 Rel(react, signalrHub, "WebSocket", "Real-time updates")
+Rel(bff, reviewModule, "MediatR", "Treatment review commands & queries")
 Rel(bff, referralModule, "MediatR", "Commands & queries")
 Rel(bff, notesModule, "MediatR", "Commands & queries")
 Rel(bff, postgres, "Npgsql", "Read/write")
@@ -37,7 +42,10 @@ Rel(bff, redis, "StackExchange.Redis", "Cache read models")
 Rel(serviceBus, projections, "Subscribe", "Domain events")
 Rel(projections, postgres, "Npgsql", "Upsert read models")
 Rel(projections, signalrHub, "Notify", "Push updates")
-Rel(referralModule, serviceBus, "Publish", "ReferralAccepted/Declined")
+Rel(reviewModule, outbox, "Append clinician\ndecision events")
+Rel(referralModule, outbox, "Append referral\ndecision events")
+Rel(notesModule, outbox, "Append note events")
+Rel(outbox, serviceBus, "Relay publish", "TreatmentPlanApproved/Rejected,\nTreatmentAdjustmentApproved/Rejected,\nReferralAccepted/Declined,\nClinicalNoteAdded")
 Rel(bff, identityCtx, "JWT", "Validate tokens")
 
 @enduml

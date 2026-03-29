@@ -6,19 +6,26 @@ skinparam sequenceMessageAlign center
 
 participant "Service Bus" as Bus
 participant "ScanCompleted\nConsumer" as Consumer
+participant "Processed Message\nStore" as Inbox
 participant "MediatR" as MediatR
 participant "TrackEfficacy\nHandler" as EfficacyHandler
 participant "EfficacyTracker" as Tracker
+participant "SafetyGuardrail\nEvaluator" as Safety
+participant "AdjustmentAdvisor" as Advisor
 participant "EscalationEngine" as Escalation
 participant "ResolutionVerifier" as Verifier
 participant "ITreatmentRepository\n(Cosmos)" as Repo
-participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+participant "Integration Outbox" as Outbox
+participant "Outbox Relay" as Relay
+participant "Clinical Portal" as Portal
 
-Bus -> Consumer : ScanCompleted event\n{scanId, userId, rednessScore}
+Bus -> Consumer : ScanCompleted / ForecastGenerated\n{tenantId, userId, ...}
+Consumer -> Inbox : TryBegin(eventId)
+Inbox --> Consumer : first delivery
 Consumer -> MediatR : Send(TrackEfficacyCommand)
 MediatR -> EfficacyHandler : Handle(command)
 
-EfficacyHandler -> Repo : GetActivePlanAsync(userId)
+EfficacyHandler -> Repo : GetActivePlanAsync(tenantId, userId)
 Repo --> EfficacyHandler : TreatmentPlan
 
 EfficacyHandler -> Tracker : ComputeEfficacy(plan, latestScan)
@@ -32,21 +39,36 @@ alt Efficacy improving and checkpoint reached
 
     alt Resolved
         EfficacyHandler -> Repo : SaveAsync(plan.MarkResolved())
-        EfficacyHandler -> Publisher : PublishAsync(TreatmentResolved)
     end
 
 else Efficacy below threshold
     EfficacyHandler -> Escalation : Evaluate(plan, measurements)
     Escalation --> EfficacyHandler : EscalationDecision
 
-    alt Adjust dose
-        EfficacyHandler -> EfficacyHandler : Recalculate dosage
+    alt Low-risk behavioral change inside guardrail
+        EfficacyHandler -> Advisor : BuildAdjustmentProposal(plan, measurement)
+        Advisor --> EfficacyHandler : BehavioralIntervention
+        EfficacyHandler -> Safety : CanAutoApplyBehavioralAdjustment(plan, proposal)
+        Safety --> EfficacyHandler : true
         EfficacyHandler -> Repo : SaveAsync(adjustedPlan)
-        EfficacyHandler -> Publisher : PublishAsync(InterventionAdjusted)
+        EfficacyHandler -> Outbox : Append(InterventionAdjusted)
+    else Medication-affecting adjustment required
+        EfficacyHandler -> Advisor : BuildAdjustmentProposal(plan, measurement)
+        Advisor --> EfficacyHandler : MedicationIntervention
+        EfficacyHandler -> Safety : CanAutoApplyMedicationChange(plan, proposal)
+        Safety --> EfficacyHandler : false
+        EfficacyHandler -> Repo : SaveAsync(plan.PendingAdjustmentApproval())
+        EfficacyHandler -> Outbox : Append(TreatmentAdjustmentProposed)
+        Relay -> Outbox : Poll pending records
+        Relay -> Bus : Publish(TreatmentAdjustmentProposed)
+        Bus -> Portal : TreatmentAdjustmentProposed
     else Escalate
-        EfficacyHandler -> Publisher : PublishAsync(EscalationTriggered)
+        EfficacyHandler -> Outbox : Append(EscalationRecommended)
     end
 end
+
+Relay -> Outbox : Poll pending records
+Relay -> Bus : Publish buffered treatment events
 
 EfficacyHandler --> MediatR : Result
 MediatR --> Consumer : Result

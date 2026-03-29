@@ -59,14 +59,15 @@ package "Handlers" <<Rectangle>> {
     class CreateSubscriptionHandler <<Handler>> {
         - _stripeClient : IStripeClient
         - _repository : ISubscriptionRepository
-        - _bus : IServiceBus
+        - _outbox : IIntegrationOutbox
         --
         + Handle(command) : Result<SubscriptionDto>
     }
 
     class HandleStripeWebhookHandler <<Handler>> {
         - _repository : ISubscriptionRepository
-        - _bus : IServiceBus
+        - _processedMessages : IProcessedMessageStore
+        - _outbox : IIntegrationOutbox
         --
         + Handle(command) : Result
     }

@@ -8,21 +8,28 @@ title Referral Flow - AI Escalation to Clinician Resolution
 actor "Clinician" as clinician
 participant "React Frontend" as react
 participant "BFF API" as bff
+participant "Processed Message\nStore" as inbox
 participant "MediatR" as mediatr
 participant "ReferralCase\nRepository" as repo
+participant "Integration\nOutbox" as outbox
+participant "Outbox Relay" as relay
 database "PostgreSQL" as db
 participant "Azure\nService Bus" as bus
 participant "Notification\nContext" as notify
 
-== Escalation Triggered (from Diagnostic Context) ==
+== Escalation Recommended (from Treatment Context) ==
 
-bus -> bff : EscalationTriggered event
+bus -> bff : EscalationRecommended event
 activate bff
+bff -> inbox : TryBegin(eventId)
+inbox --> bff : first delivery
 bff -> mediatr : CreateReferralCommand
 mediatr -> repo : Create ReferralCase
 repo -> db : INSERT referral_cases
 repo --> mediatr : ReferralCase created
-mediatr -> bus : ReferralCreated event
+mediatr -> outbox : Append(ReferralCreated)
+relay -> outbox : Poll pending records
+relay -> bus : Publish(ReferralCreated)
 bus -> notify : ReferralCreated event
 notify -> clinician : Push notification:\n"New AI-escalated referral"
 deactivate bff
@@ -49,7 +56,9 @@ repo -> db : SELECT referral
 repo --> mediatr : ReferralCase
 mediatr -> repo : referral.Accept(clinicianId)
 repo -> db : UPDATE status = Accepted
-mediatr -> bus : ReferralAccepted event
+mediatr -> outbox : Append(ReferralAccepted)
+relay -> outbox : Poll pending records
+relay -> bus : Publish(ReferralAccepted)
 deactivate bff
 
 bus -> notify : ReferralAccepted event
