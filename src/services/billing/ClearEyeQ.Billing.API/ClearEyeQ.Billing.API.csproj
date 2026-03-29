@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Billing.Infrastructure/ClearEyeQ.Billing.Infrastructure.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Billing.Application/ClearEyeQ.Billing.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Billing.Domain/ClearEyeQ.Billing.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,5 @@
 using ClearEyeQ.Scan.Application.Commands.ProcessScan;
 using ClearEyeQ.Scan.Application.Interfaces;
-using ClearEyeQ.Scan.Domain.Aggregates;
 using ClearEyeQ.Scan.Domain.Entities;
 using ClearEyeQ.Scan.Domain.Enums;
 using ClearEyeQ.Scan.Domain.ValueObjects;
@@ -8,6 +7,9 @@ using ClearEyeQ.SharedKernel.Domain.Events;
 using ClearEyeQ.SharedKernel.Domain.ValueObjects;
 using FluentAssertions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using Xunit;
+using ScanAggregate = ClearEyeQ.Scan.Domain.Aggregates.Scan;
 
 namespace ClearEyeQ.Scan.Tests.Unit;
 
@@ -31,7 +33,7 @@ public sealed class ProcessScanHandlerTests
         var userId = UserId.New();
         var tenantId = TenantId.New();
         var metadata = new CaptureMetadata("iPhone 15 Pro", 10, TimeSpan.FromMilliseconds(500), 350.0);
-        var scan = Scan.Initiate(userId, tenantId, EyeSide.Left, metadata);
+        var scan = ScanAggregate.Initiate(userId, tenantId, EyeSide.Left, metadata);
         scan.AddImage(new ScanImage(0, "https://blob/0.webp", 0.9));
         scan.AddImage(new ScanImage(1, "https://blob/1.webp", 0.85));
 
@@ -79,7 +81,7 @@ public sealed class ProcessScanHandlerTests
         var command = new ProcessScanCommand(ScanId.New(), TenantId.New());
 
         _scanRepository.GetByIdAsync(Arg.Any<ScanId>(), Arg.Any<TenantId>(), Arg.Any<CancellationToken>())
-            .Returns((Scan?)null);
+            .Returns((ScanAggregate?)null);
 
         var act = () => _handler.Handle(command, CancellationToken.None);
 
@@ -94,7 +96,7 @@ public sealed class ProcessScanHandlerTests
         var userId = UserId.New();
         var tenantId = TenantId.New();
         var metadata = new CaptureMetadata("iPhone 15 Pro", 10, TimeSpan.FromMilliseconds(500), 350.0);
-        var scan = Scan.Initiate(userId, tenantId, EyeSide.Left, metadata);
+        var scan = ScanAggregate.Initiate(userId, tenantId, EyeSide.Left, metadata);
         scan.AddImage(new ScanImage(0, "https://blob/0.webp", 0.9));
 
         var command = new ProcessScanCommand(scan.ScanId, tenantId);

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Notifications.Infrastructure/ClearEyeQ.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Notifications.Application/ClearEyeQ.Notifications.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Notifications.Domain/ClearEyeQ.Notifications.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+</Project>

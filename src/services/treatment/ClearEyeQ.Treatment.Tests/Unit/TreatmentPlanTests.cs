@@ -3,6 +3,7 @@ using ClearEyeQ.Treatment.Domain.Aggregates;
 using ClearEyeQ.Treatment.Domain.Entities;
 using ClearEyeQ.Treatment.Domain.Enums;
 using ClearEyeQ.Treatment.Domain.Events;
+using Xunit;
 using ClearEyeQ.Treatment.Domain.ValueObjects;
 using FluentAssertions;
 

@@ -4,6 +4,7 @@ using ClearEyeQ.Identity.Domain.Enums;
 using ClearEyeQ.SharedKernel.Domain.ValueObjects;
 using FluentAssertions;
 using NSubstitute;
+using Xunit;
 
 namespace ClearEyeQ.Identity.Tests.Unit;
 

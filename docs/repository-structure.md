@@ -20,6 +20,7 @@ ClearEyeQ/
 │   ├── specs/
 │   │   ├── L1.md                          # High-level requirements
 │   │   └── L2.md                          # Detailed requirements with acceptance criteria
+│   ├── deployment-strategy-azure-staging-production.md  # Azure staging -> production deployment strategy
 │   ├── detailed-design/
 │   │   ├── 00-system-architecture/        # C4 L1/L2, messaging map, shared kernel
 │   │   ├── 01-identity-and-access/        # AuthN/AuthZ/HIPAA design

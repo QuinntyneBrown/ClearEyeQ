@@ -174,8 +174,8 @@ public sealed class DiagnosticSessionTests
 
         var evt = (DiagnosisCompletedEvent)session.DomainEvents[0];
         evt.TopConditions.Should().HaveCount(5);
-        evt.TopConditions[0].Confidence.Should().Be(0.7);
-        evt.TopConditions[4].Confidence.Should().Be(0.3);
+        evt.TopConditions[0].Confidence.Should().BeApproximately(0.7, 0.001);
+        evt.TopConditions[4].Confidence.Should().BeApproximately(0.3, 0.001);
     }
 
     [Fact]

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Billing.Domain/ClearEyeQ.Billing.Domain.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Billing.Application/ClearEyeQ.Billing.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Billing.Infrastructure/ClearEyeQ.Billing.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

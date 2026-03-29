@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using ClearEyeQ.Identity.Application.Interfaces;
-using ClearEyeQ.Identity.Domain.Aggregates;
 using ClearEyeQ.SharedKernel.Domain.ValueObjects;
 using Microsoft.Azure.Cosmos;
+using User = ClearEyeQ.Identity.Domain.Aggregates.User;
 
 namespace ClearEyeQ.Identity.Infrastructure.Persistence;
 

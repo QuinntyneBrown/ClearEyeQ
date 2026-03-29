@@ -3,6 +3,7 @@ using ClearEyeQ.Identity.Domain.Enums;
 using ClearEyeQ.Identity.Domain.Events;
 using ClearEyeQ.SharedKernel.Domain.ValueObjects;
 using FluentAssertions;
+using Xunit;
 
 namespace ClearEyeQ.Identity.Tests.Unit;
 

@@ -82,10 +82,10 @@ public sealed class ScanCompletedConsumer : BackgroundService
         return Task.CompletedTask;
     }
 
-    public override async ValueTask DisposeAsync()
+    public override void Dispose()
     {
-        await _processor.DisposeAsync();
-        await base.DisposeAsync();
+        _processor.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        base.Dispose();
     }
 
     private sealed record ScanCompletedMessage(Guid ScanId, Guid UserId, Guid TenantId);

@@ -52,7 +52,7 @@
     <PackageVersion Include="Hl7.Fhir.R4" Version="5.11.2" />
 
     <!-- Stripe -->
-    <PackageVersion Include="Stripe.net" Version="46.3.0" />
+    <PackageVersion Include="Stripe.net" Version="47.0.0" />
 
     <!-- Observability -->
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />

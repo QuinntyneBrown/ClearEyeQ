@@ -1,0 +1,87 @@
+<Solution>
+  <Folder Name="/Shared/">
+    <Project Path="src/shared/ClearEyeQ.SharedKernel/ClearEyeQ.SharedKernel.csproj" />
+    <Project Path="src/shared/ClearEyeQ.SharedKernel.Tests/ClearEyeQ.SharedKernel.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Gateway/">
+    <Project Path="src/gateway/ClearEyeQ.Gateway/ClearEyeQ.Gateway.csproj" />
+    <Project Path="src/gateway/ClearEyeQ.Gateway.Tests/ClearEyeQ.Gateway.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/Identity/">
+    <Project Path="src/services/identity/ClearEyeQ.Identity.Domain/ClearEyeQ.Identity.Domain.csproj" />
+    <Project Path="src/services/identity/ClearEyeQ.Identity.Application/ClearEyeQ.Identity.Application.csproj" />
+    <Project Path="src/services/identity/ClearEyeQ.Identity.Infrastructure/ClearEyeQ.Identity.Infrastructure.csproj" />
+    <Project Path="src/services/identity/ClearEyeQ.Identity.API/ClearEyeQ.Identity.API.csproj" />
+    <Project Path="src/services/identity/ClearEyeQ.Identity.Tests/ClearEyeQ.Identity.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Scan/">
+    <Project Path="src/services/scan/ClearEyeQ.Scan.Domain/ClearEyeQ.Scan.Domain.csproj" />
+    <Project Path="src/services/scan/ClearEyeQ.Scan.Application/ClearEyeQ.Scan.Application.csproj" />
+    <Project Path="src/services/scan/ClearEyeQ.Scan.Infrastructure/ClearEyeQ.Scan.Infrastructure.csproj" />
+    <Project Path="src/services/scan/ClearEyeQ.Scan.API/ClearEyeQ.Scan.API.csproj" />
+    <Project Path="src/services/scan/ClearEyeQ.Scan.Tests/ClearEyeQ.Scan.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Monitoring/">
+    <Project Path="src/services/monitoring/ClearEyeQ.Monitoring.Domain/ClearEyeQ.Monitoring.Domain.csproj" />
+    <Project Path="src/services/monitoring/ClearEyeQ.Monitoring.Application/ClearEyeQ.Monitoring.Application.csproj" />
+    <Project Path="src/services/monitoring/ClearEyeQ.Monitoring.Infrastructure/ClearEyeQ.Monitoring.Infrastructure.csproj" />
+    <Project Path="src/services/monitoring/ClearEyeQ.Monitoring.API/ClearEyeQ.Monitoring.API.csproj" />
+    <Project Path="src/services/monitoring/ClearEyeQ.Monitoring.Tests/ClearEyeQ.Monitoring.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Environmental/">
+    <Project Path="src/services/environmental/ClearEyeQ.Environmental.Domain/ClearEyeQ.Environmental.Domain.csproj" />
+    <Project Path="src/services/environmental/ClearEyeQ.Environmental.Application/ClearEyeQ.Environmental.Application.csproj" />
+    <Project Path="src/services/environmental/ClearEyeQ.Environmental.Infrastructure/ClearEyeQ.Environmental.Infrastructure.csproj" />
+    <Project Path="src/services/environmental/ClearEyeQ.Environmental.API/ClearEyeQ.Environmental.API.csproj" />
+    <Project Path="src/services/environmental/ClearEyeQ.Environmental.Tests/ClearEyeQ.Environmental.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Diagnostic/">
+    <Project Path="src/services/diagnostic/ClearEyeQ.Diagnostic.Domain/ClearEyeQ.Diagnostic.Domain.csproj" />
+    <Project Path="src/services/diagnostic/ClearEyeQ.Diagnostic.Application/ClearEyeQ.Diagnostic.Application.csproj" />
+    <Project Path="src/services/diagnostic/ClearEyeQ.Diagnostic.Infrastructure/ClearEyeQ.Diagnostic.Infrastructure.csproj" />
+    <Project Path="src/services/diagnostic/ClearEyeQ.Diagnostic.API/ClearEyeQ.Diagnostic.API.csproj" />
+    <Project Path="src/services/diagnostic/ClearEyeQ.Diagnostic.Tests/ClearEyeQ.Diagnostic.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Predictive/">
+    <Project Path="src/services/predictive/ClearEyeQ.Predictive.Domain/ClearEyeQ.Predictive.Domain.csproj" />
+    <Project Path="src/services/predictive/ClearEyeQ.Predictive.Application/ClearEyeQ.Predictive.Application.csproj" />
+    <Project Path="src/services/predictive/ClearEyeQ.Predictive.Infrastructure/ClearEyeQ.Predictive.Infrastructure.csproj" />
+    <Project Path="src/services/predictive/ClearEyeQ.Predictive.API/ClearEyeQ.Predictive.API.csproj" />
+    <Project Path="src/services/predictive/ClearEyeQ.Predictive.Tests/ClearEyeQ.Predictive.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Treatment/">
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.Domain/ClearEyeQ.Treatment.Domain.csproj" />
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.Application/ClearEyeQ.Treatment.Application.csproj" />
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.Infrastructure/ClearEyeQ.Treatment.Infrastructure.csproj" />
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.API/ClearEyeQ.Treatment.API.csproj" />
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.Tests/ClearEyeQ.Treatment.Tests.csproj" />
+    <Project Path="src/services/treatment/ClearEyeQ.Treatment.Worker/ClearEyeQ.Treatment.Worker.csproj" />
+  </Folder>
+  <Folder Name="/Services/Clinical/">
+    <Project Path="src/services/clinical/ClearEyeQ.Clinical.Application/ClearEyeQ.Clinical.Application.csproj" />
+    <Project Path="src/services/clinical/ClearEyeQ.Clinical.Infrastructure/ClearEyeQ.Clinical.Infrastructure.csproj" />
+    <Project Path="src/services/clinical/ClearEyeQ.Clinical.API/ClearEyeQ.Clinical.API.csproj" />
+    <Project Path="src/services/clinical/ClearEyeQ.Clinical.Tests/ClearEyeQ.Clinical.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Notifications/">
+    <Project Path="src/services/notifications/ClearEyeQ.Notifications.Domain/ClearEyeQ.Notifications.Domain.csproj" />
+    <Project Path="src/services/notifications/ClearEyeQ.Notifications.Application/ClearEyeQ.Notifications.Application.csproj" />
+    <Project Path="src/services/notifications/ClearEyeQ.Notifications.Infrastructure/ClearEyeQ.Notifications.Infrastructure.csproj" />
+    <Project Path="src/services/notifications/ClearEyeQ.Notifications.API/ClearEyeQ.Notifications.API.csproj" />
+    <Project Path="src/services/notifications/ClearEyeQ.Notifications.Tests/ClearEyeQ.Notifications.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Billing/">
+    <Project Path="src/services/billing/ClearEyeQ.Billing.Domain/ClearEyeQ.Billing.Domain.csproj" />
+    <Project Path="src/services/billing/ClearEyeQ.Billing.Application/ClearEyeQ.Billing.Application.csproj" />
+    <Project Path="src/services/billing/ClearEyeQ.Billing.Infrastructure/ClearEyeQ.Billing.Infrastructure.csproj" />
+    <Project Path="src/services/billing/ClearEyeQ.Billing.API/ClearEyeQ.Billing.API.csproj" />
+    <Project Path="src/services/billing/ClearEyeQ.Billing.Tests/ClearEyeQ.Billing.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Fhir/">
+    <Project Path="src/services/fhir/ClearEyeQ.Fhir.Application/ClearEyeQ.Fhir.Application.csproj" />
+    <Project Path="src/services/fhir/ClearEyeQ.Fhir.Infrastructure/ClearEyeQ.Fhir.Infrastructure.csproj" />
+    <Project Path="src/services/fhir/ClearEyeQ.Fhir.API/ClearEyeQ.Fhir.API.csproj" />
+    <Project Path="src/services/fhir/ClearEyeQ.Fhir.Tests/ClearEyeQ.Fhir.Tests.csproj" />
+  </Folder>
+</Solution>

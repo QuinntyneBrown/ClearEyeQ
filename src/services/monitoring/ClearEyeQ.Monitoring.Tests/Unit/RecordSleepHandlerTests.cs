@@ -1,3 +1,4 @@
+using Xunit;
 using ClearEyeQ.Monitoring.Application.Commands.RecordSleep;
 using ClearEyeQ.Monitoring.Application.Interfaces;
 using ClearEyeQ.Monitoring.Domain.Aggregates;

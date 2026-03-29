@@ -134,9 +134,9 @@ internal sealed class ScanDocument
             audit = new AuditMetadataDoc
             {
                 createdAt = scan.Audit.CreatedAt,
-                createdBy = scan.Audit.CreatedBy.Value.ToString(),
+                createdBy = scan.Audit.CreatedBy,
                 modifiedAt = scan.Audit.ModifiedAt,
-                modifiedBy = scan.Audit.ModifiedBy?.Value.ToString()
+                modifiedBy = scan.Audit.ModifiedBy
             }
         };
 
@@ -192,7 +192,6 @@ internal sealed class ScanDocument
         // Use reflection to restore persisted state since the aggregate is designed for
         // event-driven state transitions, not direct property setting
         var type = typeof(Domain.Aggregates.Scan);
-        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
 
         type.BaseType!.GetProperty("Id")!.SetValue(scan, Guid.Parse(id));
         type.GetProperty("ScanId")!.GetSetMethod(true)!.Invoke(scan, [scanIdVal]);

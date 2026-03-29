@@ -1,10 +1,11 @@
-using ClearEyeQ.Scan.Domain.Aggregates;
 using ClearEyeQ.Scan.Domain.Entities;
 using ClearEyeQ.Scan.Domain.Enums;
 using ClearEyeQ.Scan.Domain.Events;
 using ClearEyeQ.Scan.Domain.ValueObjects;
 using ClearEyeQ.SharedKernel.Domain.ValueObjects;
 using FluentAssertions;
+using Xunit;
+using ScanAggregate = ClearEyeQ.Scan.Domain.Aggregates.Scan;
 
 namespace ClearEyeQ.Scan.Tests.Unit;
 
@@ -31,7 +32,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void Initiate_ShouldCreateScanWithInitiatedStatus()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
 
         scan.ScanId.Value.Should().NotBeEmpty();
         scan.UserId.Should().Be(TestUserId);
@@ -49,7 +50,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void AddImage_ShouldAddImageAndTransitionToCapturing()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Right, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Right, CreateMetadata());
         var image = new ScanImage(0, "https://blob/tenant/user/scan/0.webp", 0.85);
 
         scan.AddImage(image);
@@ -63,7 +64,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void AddImage_ShouldSelectHighestQualityImage()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
         var lowQuality = new ScanImage(0, "https://blob/0.webp", 0.5);
         var highQuality = new ScanImage(1, "https://blob/1.webp", 0.95);
         var midQuality = new ScanImage(2, "https://blob/2.webp", 0.7);
@@ -79,7 +80,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void Complete_ShouldSetResultsAndRaiseScanCompletedEvent()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
         scan.AddImage(new ScanImage(0, "https://blob/0.webp", 0.9));
         scan.MarkProcessing();
 
@@ -99,7 +100,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void Fail_ShouldSetFailureReasonAndRaiseScanFailedEvent()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
         scan.AddImage(new ScanImage(0, "https://blob/0.webp", 0.9));
         scan.MarkProcessing();
 
@@ -115,7 +116,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void CompareWith_ShouldComputeRednessDelta()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
         scan.AddImage(new ScanImage(0, "https://blob/0.webp", 0.9));
         scan.MarkProcessing();
         scan.Complete(CreateRednessScore(60.0), CreateTearFilmMetrics());
@@ -133,7 +134,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void MarkProcessing_WithNoImages_ShouldThrow()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
 
         var act = () => scan.MarkProcessing();
 
@@ -144,7 +145,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void Complete_WhenNotProcessing_ShouldThrow()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
 
         var act = () => scan.Complete(CreateRednessScore(), CreateTearFilmMetrics());
 
@@ -154,7 +155,7 @@ public sealed class ScanAggregateTests
     [Fact]
     public void CompareWith_WhenNotCompleted_ShouldThrow()
     {
-        var scan = Scan.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
+        var scan = ScanAggregate.Initiate(TestUserId, TestTenantId, EyeSide.Left, CreateMetadata());
 
         var act = () => scan.CompareWith(ScanId.New(), CreateRednessScore());
 

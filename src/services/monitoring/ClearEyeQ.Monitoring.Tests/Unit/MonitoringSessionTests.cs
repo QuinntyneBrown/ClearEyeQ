@@ -1,3 +1,4 @@
+using Xunit;
 using ClearEyeQ.Monitoring.Domain.Aggregates;
 using ClearEyeQ.Monitoring.Domain.Enums;
 using ClearEyeQ.Monitoring.Domain.Events;

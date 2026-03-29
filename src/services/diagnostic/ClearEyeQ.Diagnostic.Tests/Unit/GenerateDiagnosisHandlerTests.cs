@@ -83,7 +83,7 @@ public sealed class GenerateDiagnosisHandlerTests
                 Arg.Any<ScanId>(), Arg.Any<double>(), Arg.Any<Dictionary<string, double>>(),
                 Arg.Any<double>(), Arg.Any<List<EnvironmentalFactorInput>>(),
                 Arg.Any<List<MonitoringMetricInput>>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("ML service unavailable"));
+            .Returns<List<Diagnosis>>(x => throw new InvalidOperationException("ML service unavailable"));
 
         var act = () => _handler.Handle(command, CancellationToken.None);
 
