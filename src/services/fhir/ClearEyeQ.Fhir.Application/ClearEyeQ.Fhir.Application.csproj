@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\ClearEyeQ.SharedKernel\ClearEyeQ.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Hl7.Fhir.R4" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Treatment.Application/ClearEyeQ.Treatment.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Treatment.Domain/ClearEyeQ.Treatment.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
+</Project>

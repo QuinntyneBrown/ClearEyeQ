@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClearEyeQ.Environmental.Application\ClearEyeQ.Environmental.Application.csproj" />
+    <ProjectReference Include="..\ClearEyeQ.Environmental.Domain\ClearEyeQ.Environmental.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Predictive.Application/ClearEyeQ.Predictive.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Predictive.Domain/ClearEyeQ.Predictive.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Tools">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="../../../tools/proto/predictive_ml.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+</Project>

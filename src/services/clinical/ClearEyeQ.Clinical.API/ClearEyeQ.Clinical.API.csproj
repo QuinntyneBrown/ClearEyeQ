@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClearEyeQ.Clinical.Infrastructure\ClearEyeQ.Clinical.Infrastructure.csproj" />
+    <ProjectReference Include="..\ClearEyeQ.Clinical.Application\ClearEyeQ.Clinical.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+</Project>

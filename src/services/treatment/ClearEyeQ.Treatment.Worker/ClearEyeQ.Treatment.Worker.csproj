@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Treatment.Infrastructure/ClearEyeQ.Treatment.Infrastructure.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Treatment.Application/ClearEyeQ.Treatment.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Treatment.Domain/ClearEyeQ.Treatment.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../ClearEyeQ.Predictive.Infrastructure/ClearEyeQ.Predictive.Infrastructure.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Predictive.Application/ClearEyeQ.Predictive.Application.csproj" />
+    <ProjectReference Include="../ClearEyeQ.Predictive.Domain/ClearEyeQ.Predictive.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+</Project>

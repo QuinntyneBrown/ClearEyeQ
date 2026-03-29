@@ -1,0 +1,206 @@
+{
+  "ReverseProxy": {
+    "Routes": {
+      "identity-route": {
+        "ClusterId": "identity-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/identity/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/identity" }
+        ]
+      },
+      "scans-route": {
+        "ClusterId": "scans-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/scans/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/scans" }
+        ]
+      },
+      "monitoring-route": {
+        "ClusterId": "monitoring-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/monitoring/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/monitoring" }
+        ]
+      },
+      "environmental-route": {
+        "ClusterId": "environmental-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/environmental/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/environmental" }
+        ]
+      },
+      "diagnostics-route": {
+        "ClusterId": "diagnostics-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/diagnostics/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/diagnostics" }
+        ]
+      },
+      "predictions-route": {
+        "ClusterId": "predictions-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/predictions/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/predictions" }
+        ]
+      },
+      "treatments-route": {
+        "ClusterId": "treatments-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/treatments/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/treatments" }
+        ]
+      },
+      "clinical-route": {
+        "ClusterId": "clinical-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/clinical/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/clinical" }
+        ]
+      },
+      "notifications-route": {
+        "ClusterId": "notifications-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/notifications/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/notifications" }
+        ]
+      },
+      "billing-route": {
+        "ClusterId": "billing-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/billing/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/billing" }
+        ]
+      },
+      "fhir-route": {
+        "ClusterId": "fhir-cluster",
+        "AuthorizationPolicy": "default",
+        "RateLimiterPolicy": "fixed",
+        "Match": {
+          "Path": "/api/fhir/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/fhir" }
+        ]
+      }
+    },
+    "Clusters": {
+      "identity-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5101"
+          }
+        }
+      },
+      "scans-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5102"
+          }
+        }
+      },
+      "monitoring-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5103"
+          }
+        }
+      },
+      "environmental-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5104"
+          }
+        }
+      },
+      "diagnostics-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5105"
+          }
+        }
+      },
+      "predictions-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5106"
+          }
+        }
+      },
+      "treatments-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5107"
+          }
+        }
+      },
+      "clinical-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5108"
+          }
+        }
+      },
+      "notifications-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5109"
+          }
+        }
+      },
+      "billing-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5110"
+          }
+        }
+      },
+      "fhir-cluster": {
+        "Destinations": {
+          "destination1": {
+            "Address": "http://localhost:5111"
+          }
+        }
+      }
+    }
+  }
+}

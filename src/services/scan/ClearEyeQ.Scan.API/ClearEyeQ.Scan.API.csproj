@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClearEyeQ.Scan.Domain\ClearEyeQ.Scan.Domain.csproj" />
+    <ProjectReference Include="..\ClearEyeQ.Scan.Application\ClearEyeQ.Scan.Application.csproj" />
+    <ProjectReference Include="..\ClearEyeQ.Scan.Infrastructure\ClearEyeQ.Scan.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

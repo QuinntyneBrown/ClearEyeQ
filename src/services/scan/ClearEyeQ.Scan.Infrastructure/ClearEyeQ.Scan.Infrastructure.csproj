@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClearEyeQ.Scan.Domain\ClearEyeQ.Scan.Domain.csproj" />
+    <ProjectReference Include="..\ClearEyeQ.Scan.Application\ClearEyeQ.Scan.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\..\..\..\tools\proto\scan_ml.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+</Project>
