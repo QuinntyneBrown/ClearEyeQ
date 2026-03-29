@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package cleareyeq.scanml.v1;
+
+option csharp_namespace = "ClearEyeQ.Scan.Infrastructure.ML.Proto";
+
+service ScanMLService {
+  rpc AnalyzePositioning (PositioningRequest) returns (PositioningResponse);
+  rpc ScoreRedness (RednessRequest) returns (RednessResponse);
+  rpc AnalyzeTearFilm (TearFilmRequest) returns (TearFilmResponse);
+  rpc ProcessScan (ProcessScanRequest) returns (ProcessScanResponse);
+}
+
+message PositioningRequest {
+  bytes frame_data = 1;
+  string device_model = 2;
+}
+
+message PositioningResponse {
+  double alignment_score = 1;
+  string directional_hint = 2;
+  bool is_ready = 3;
+}
+
+message RednessRequest {
+  repeated bytes frame_data = 1;
+  double ambient_light_lux = 2;
+}
+
+message RednessResponse {
+  double overall_score = 1;
+  double confidence = 2;
+  map<string, double> zone_scores = 3;
+}
+
+message TearFilmRequest {
+  repeated bytes frame_data = 1;
+}
+
+message TearFilmResponse {
+  double break_up_time = 1;
+  string lipid_layer_grade = 2;
+  double coverage_percentage = 3;
+}
+
+message ProcessScanRequest {
+  string scan_id = 1;
+  repeated bytes frame_data = 2;
+  double ambient_light_lux = 3;
+  string device_model = 4;
+}
+
+message ProcessScanResponse {
+  double redness_score = 1;
+  double redness_confidence = 2;
+  map<string, double> zone_scores = 3;
+  double tear_film_break_up_time = 4;
+  string tear_film_lipid_grade = 5;
+  double tear_film_coverage = 6;
+}

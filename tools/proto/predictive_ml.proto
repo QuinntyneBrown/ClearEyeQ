@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package cleareyeq.predictiveml.v1;
+
+option csharp_namespace = "ClearEyeQ.Predictive.Infrastructure.ML.Proto";
+
+service PredictiveMLService {
+  rpc GenerateForecast (ForecastRequest) returns (ForecastResponse);
+  rpc DetectFlareUpRisk (FlareUpRequest) returns (FlareUpResponse);
+  rpc ModelTrajectory (TrajectoryRequest) returns (TrajectoryResponse);
+  rpc FindSimilarPatients (SimilarityRequest) returns (SimilarityResponse);
+}
+
+message ForecastRequest {
+  string user_id = 1;
+  repeated TimeSeriesPoint redness_history = 2;
+  repeated TimeSeriesPoint environmental_history = 3;
+  repeated TimeSeriesPoint monitoring_history = 4;
+  int32 forecast_days = 5;
+}
+
+message TimeSeriesPoint {
+  string timestamp = 1;
+  double value = 2;
+  string metric_name = 3;
+}
+
+message ForecastResponse {
+  repeated ForecastDay days = 1;
+}
+
+message ForecastDay {
+  string date = 1;
+  double predicted_score = 2;
+  string risk_level = 3;
+  string primary_factor = 4;
+  double confidence_lower = 5;
+  double confidence_upper = 6;
+}
+
+message FlareUpRequest {
+  string user_id = 1;
+  repeated TimeSeriesPoint recent_data = 2;
+  repeated string active_conditions = 3;
+}
+
+message FlareUpResponse {
+  double probability = 1;
+  repeated string trigger_factors = 2;
+  repeated string preventive_actions = 3;
+  string risk_level = 4;
+}
+
+message TrajectoryRequest {
+  string user_id = 1;
+  repeated TimeSeriesPoint historical_scores = 2;
+  repeated string active_treatments = 3;
+  int32 horizon_months = 4;
+}
+
+message TrajectoryResponse {
+  repeated TrajectoryPoint with_treatment = 1;
+  repeated TrajectoryPoint without_treatment = 2;
+}
+
+message TrajectoryPoint {
+  string date = 1;
+  double projected_score = 2;
+  double confidence_lower = 3;
+  double confidence_upper = 4;
+}
+
+message SimilarityRequest {
+  string user_id = 1;
+  repeated double feature_vector = 2;
+  int32 top_k = 3;
+}
+
+message SimilarityResponse {
+  repeated SimilarPatient patients = 1;
+}
+
+message SimilarPatient {
+  string anonymized_id = 1;
+  double similarity_score = 2;
+  string outcome_summary = 3;
+}

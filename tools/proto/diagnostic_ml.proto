@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package cleareyeq.diagnosticml.v1;
+
+option csharp_namespace = "ClearEyeQ.Diagnostic.Infrastructure.ML.Proto";
+
+service DiagnosticMLService {
+  rpc ClassifyConditions (ClassificationRequest) returns (ClassificationResponse);
+  rpc InferCausalGraph (CausalGraphRequest) returns (CausalGraphResponse);
+  rpc CheckMedicationInteractions (MedicationCheckRequest) returns (MedicationCheckResponse);
+  rpc ScoreGeneticRisk (GeneticRiskRequest) returns (GeneticRiskResponse);
+}
+
+message ClassificationRequest {
+  string scan_id = 1;
+  double redness_score = 2;
+  map<string, double> zone_scores = 3;
+  double tear_film_break_up_time = 4;
+  repeated EnvironmentalFactor environmental_factors = 5;
+  repeated MonitoringMetric monitoring_metrics = 6;
+}
+
+message EnvironmentalFactor {
+  string factor_type = 1;
+  double value = 2;
+  string timestamp = 3;
+}
+
+message MonitoringMetric {
+  string metric_type = 1;
+  double value = 2;
+  string source = 3;
+}
+
+message ClassificationResponse {
+  repeated DiagnosisResult diagnoses = 1;
+}
+
+message DiagnosisResult {
+  string condition_code = 1;
+  string condition_name = 2;
+  double confidence = 3;
+  string severity = 4;
+  repeated string evidence_keys = 5;
+}
+
+message CausalGraphRequest {
+  string scan_id = 1;
+  repeated DiagnosisResult diagnoses = 2;
+  repeated EnvironmentalFactor environmental_factors = 3;
+  repeated MonitoringMetric monitoring_metrics = 4;
+  repeated string medications = 5;
+}
+
+message CausalGraphResponse {
+  repeated CausalNode nodes = 1;
+  repeated CausalEdge edges = 2;
+}
+
+message CausalNode {
+  string node_id = 1;
+  string label = 2;
+  string category = 3;
+  double weight = 4;
+}
+
+message CausalEdge {
+  string source_id = 1;
+  string target_id = 2;
+  double strength = 3;
+}
+
+message MedicationCheckRequest {
+  repeated string medications = 1;
+  repeated string conditions = 2;
+}
+
+message MedicationCheckResponse {
+  repeated MedicationInteraction interactions = 1;
+}
+
+message MedicationInteraction {
+  string medication = 1;
+  string interaction_type = 2;
+  string severity = 3;
+  string description = 4;
+}
+
+message GeneticRiskRequest {
+  string user_id = 1;
+  repeated string genetic_markers = 2;
+  repeated string conditions = 3;
+}
+
+message GeneticRiskResponse {
+  map<string, double> risk_scores = 1;
+}
