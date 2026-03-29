@@ -1,65 +1,70 @@
 # ClearEyeQ
 
-ClearEyeQ is a design-first monorepo for an AI-assisted ocular health platform. The repository combines product requirements, system and bounded-context architecture, UI design assets, and early backend scaffolding for identity, scan processing, monitoring, diagnostics, prediction, treatment orchestration, clinical workflows, notifications, billing, and interoperability.
+ClearEyeQ is a monorepo for an AI-assisted ocular health platform. It contains backend services, shared libraries, mobile and web application workspaces, local development infrastructure, automated tests, and the supporting requirements, architecture, and deployment documentation for the platform.
 
-> [!IMPORTANT]
-> This repository is in an early stage. Today it contains substantial design documentation and initial .NET service scaffolding, but it does not yet provide a single root solution or fully wired mobile, web, and ML application workspaces.
+## Overview
 
-## What Is In This Repository
+ClearEyeQ is organized around bounded contexts and supporting applications:
 
-- Product requirements in [`docs/specs`](docs/specs)
-- Detailed architecture and PlantUML diagrams in [`docs/detailed-design`](docs/detailed-design)
-- Shared .NET building blocks in [`src/shared`](src/shared)
-- An API gateway based on YARP in [`src/gateway`](src/gateway)
-- Bounded-context service scaffolding in [`src/services`](src/services)
-- Local development infrastructure and proto contracts in [`tools`](tools)
+- backend services for identity, scan capture, passive monitoring, environmental context, diagnostics, prediction, treatment orchestration, clinical workflows, notifications, billing, and FHIR interoperability
+- a shared .NET kernel for common domain and application primitives
+- a YARP-based API gateway
+- a React Native + Expo mobile app workspace
+- a Next.js clinician portal workspace
+- a Blazor admin workspace
 
-## Architecture Snapshot
+The target deployment model is Azure-based and is documented in [`docs/deployment-strategy-azure-staging-production.md`](docs/deployment-strategy-azure-staging-production.md).
 
-- Backend services target `.NET 9` with nullable reference types enabled and warnings treated as errors
-- Architecture follows a bounded-context and Clean Architecture approach
-- gRPC contracts for ML integration live under [`tools/proto`](tools/proto)
-- Local infrastructure currently centers on Cosmos DB Emulator, PostgreSQL with `pgvector`, Redis, Azurite, and RabbitMQ
-- Product requirements define three primary user applications:
-  - Patient mobile app: React Native + Expo
-  - Clinical portal: Next.js + React + TypeScript
-  - Admin portal: Blazor
+## Architecture At A Glance
+
+- `.NET 9` is the primary backend runtime, with nullable reference types enabled and warnings treated as errors
+- services follow a bounded-context and Clean Architecture structure
+- local development infrastructure is provided through Docker Compose
+- asynchronous integration is modeled in the detailed design set and targeted at Azure-native deployment
+- ML-facing contracts and platform shape are documented alongside the service architecture
+
+Core local dependencies today:
+
+- Azure Cosmos DB Emulator
+- PostgreSQL with `pgvector`
+- Redis
+- Azurite
+- RabbitMQ
 
 ## Repository Layout
 
 ```text
 .
 |-- docs/
-|   |-- specs/
 |   |-- detailed-design/
-|   `-- repository-structure.md
+|   |-- deployment-strategy-azure-staging-production.md
+|   |-- repository-structure.md
+|   `-- specs/
 |-- src/
+|   |-- admin/
 |   |-- gateway/
+|   |-- mobile/
+|   |-- portal/
 |   |-- services/
 |   `-- shared/
+|-- tests/
+|   `-- e2e/
 |-- tools/
 |   |-- docker-compose.yml
 |   `-- proto/
+|-- ClearEyeQ.slnx
 |-- Directory.Build.props
 `-- Directory.Packages.props
 ```
 
-For a more detailed target structure, see [`docs/repository-structure.md`](docs/repository-structure.md).
-
-## Documentation Map
-
-- High-level requirements: [`docs/specs/L1.md`](docs/specs/L1.md)
-- Detailed requirements and acceptance criteria: [`docs/specs/L2.md`](docs/specs/L2.md)
-- System architecture overview: [`docs/detailed-design/00-system-architecture/overview.md`](docs/detailed-design/00-system-architecture/overview.md)
-- Identity and access design: [`docs/detailed-design/01-identity-and-access/overview.md`](docs/detailed-design/01-identity-and-access/overview.md)
-- Scan engine design: [`docs/detailed-design/02-scan-engine/overview.md`](docs/detailed-design/02-scan-engine/overview.md)
-- Clinical portal design: [`docs/detailed-design/08-clinical-portal/overview.md`](docs/detailed-design/08-clinical-portal/overview.md)
+For the fuller intended structure, conventions, and planned infrastructure layout, see [`docs/repository-structure.md`](docs/repository-structure.md).
 
 ## Getting Started
 
 ### Prerequisites
 
 - `.NET 9 SDK`
+- `Node.js 20+`
 - `Docker` with Compose support
 - `Python 3.11+` if you want to render PlantUML diagrams locally
 
@@ -69,54 +74,68 @@ For a more detailed target structure, see [`docs/repository-structure.md`](docs/
 docker compose -f tools/docker-compose.yml up -d
 ```
 
-This brings up the current local dependencies used by the repository:
-
-- Cosmos DB Emulator
-- PostgreSQL + `pgvector`
-- Redis
-- Azurite
-- RabbitMQ
-
-### Restore, Build, and Test
-
-There is not yet a root `.sln` file, so work is currently done project-by-project.
+### Restore, Build, And Test The .NET Solution
 
 ```bash
-dotnet restore src/gateway/ClearEyeQ.Gateway/ClearEyeQ.Gateway.csproj
-dotnet build src/gateway/ClearEyeQ.Gateway/ClearEyeQ.Gateway.csproj
-dotnet test src/shared/ClearEyeQ.SharedKernel.Tests/ClearEyeQ.SharedKernel.Tests.csproj
+dotnet restore ClearEyeQ.slnx
+dotnet build ClearEyeQ.slnx
+dotnet test ClearEyeQ.slnx
 ```
 
-Use the same pattern for the specific service or test project you are changing under `src/services`.
+### Start The Mobile App Workspace
 
-### Render Architecture Diagrams
+```bash
+cd src/mobile
+npm install
+npm run start
+```
 
-The repository includes a helper script to render `*.puml` files to `*.png`:
+### Start The Clinician Portal Workspace
+
+```bash
+cd src/portal
+npm install
+npm run dev
+```
+
+### Render PlantUML Diagrams
 
 ```bash
 python -m pip install plantuml
-python docs/detailed-design/render-puml.py
+python docs/detailed-design/render-puml.py docs/detailed-design
 ```
 
-The current script uses the public PlantUML server configured in [`docs/detailed-design/render-puml.py`](docs/detailed-design/render-puml.py).
+The render helper uses the PlantUML server configured in [`docs/detailed-design/render-puml.py`](docs/detailed-design/render-puml.py).
 
-## Current State
+## Documentation
+
+- Product requirements: [`docs/specs/L1.md`](docs/specs/L1.md), [`docs/specs/L2.md`](docs/specs/L2.md)
+- System and bounded-context architecture: [`docs/detailed-design`](docs/detailed-design)
+- Azure deployment and promotion strategy: [`docs/deployment-strategy-azure-staging-production.md`](docs/deployment-strategy-azure-staging-production.md)
+- Repository structure and conventions: [`docs/repository-structure.md`](docs/repository-structure.md)
+
+Recommended starting points:
+
+- System architecture overview: [`docs/detailed-design/00-system-architecture/overview.md`](docs/detailed-design/00-system-architecture/overview.md)
+- Clinical workflow design: [`docs/detailed-design/08-clinical-portal/overview.md`](docs/detailed-design/08-clinical-portal/overview.md)
+- Treatment orchestration design: [`docs/detailed-design/07-treatment-orchestration/overview.md`](docs/detailed-design/07-treatment-orchestration/overview.md)
+
+## Project Status
+
+ClearEyeQ is under active development.
 
 The repository already includes:
 
-- A mature requirements and architecture document set
-- Initial .NET projects for the gateway, shared kernel, and several services
-- Proto contracts and local infrastructure definitions
+- a solution-based .NET codebase with shared kernel, gateway, and service projects
+- mobile, portal, and admin application workspaces
+- local infrastructure definitions and test projects
+- detailed product, architecture, and deployment documentation
 
-The repository is still assembling:
-
-- A unified root solution/workspace
-- End-to-end mobile, clinical portal, and admin portal application code
-- Fully wired CI/CD, deployment manifests, and operational documentation promised by the target structure
+Some areas described in the documentation are still being expanded or wired together, including broader CI/CD automation, environment provisioning, and full end-to-end application integration.
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch, validation, and pull request expectations.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution and pull request expectations.
 
 ## License
 
@@ -124,4 +143,4 @@ This repository is licensed under the MIT License. See [`LICENSE`](LICENSE).
 
 ## Disclaimer
 
-ClearEyeQ is a software and architecture repository. Nothing in this repository is medical advice, a diagnostic claim, or a production-ready medical device implementation.
+ClearEyeQ is a software repository. Nothing in this repository is medical advice, a diagnostic claim, or a production-ready medical device implementation.
