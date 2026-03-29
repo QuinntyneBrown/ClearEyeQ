@@ -38,7 +38,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 3000,
-    cwd: path.resolve(__dirname, '../../src/portal'),
+    cwd: path.resolve(__dirname, '../../../src/portal'),
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
