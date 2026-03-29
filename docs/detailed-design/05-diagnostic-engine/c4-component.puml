@@ -1,0 +1,58 @@
+@startuml c4-component
+!include <C4/C4_Component>
+
+skinparam defaultFontSize 11
+
+title Diagnostic Engine -- C4 Component Diagram (Level 3)
+
+Container_Boundary(diag_svc, "Diagnostic Service (.NET 9)") {
+
+    Component(api, "Diagnostic API", "ASP.NET Core", "REST endpoints for\ndiagnosis queries and\nclinician review")
+
+    Component(bus_handler, "Event Handlers", "Azure Service Bus\nConsumer", "Subscribes to\nScanCompleted,\nMonitoringDataReceived,\nEnvironmentalSnapshot")
+
+    Component(mediatr, "MediatR Pipeline", "MediatR + Behaviors", "Command/Query dispatch,\nvalidation, logging")
+
+    Component(cmd_handler, "GenerateDiagnosis\nHandler", "Application Service", "Orchestrates the full\ndiagnostic pipeline")
+
+    Component(query_handlers, "Query Handlers", "Application Service", "GetCausalGraph,\nCheckMedicationInteractions")
+
+    Component(grpc_client, "ML gRPC Client", ".NET gRPC Client", "Calls Python ML cluster\nfor inference")
+
+    Component(repo, "Diagnostic Repository", "EF Core + Npgsql", "Persists sessions,\ndiagnoses, causal graphs")
+
+    Component(event_pub, "Event Publisher", "Azure Service Bus\nProducer", "Publishes\nDiagnosisCompleted")
+}
+
+Container_Boundary(ml_cluster, "Python ML Cluster") {
+
+    Component(ml_facade, "ML Service Facade", "gRPC Server\n(Python 3.12)", "Routes inference\nrequests to models")
+
+    Component(classifier, "Diagnostic\nClassifier", "PyTorch", "Multi-label condition\nclassification")
+
+    Component(causal, "Causal Inference\nEngine", "pgmpy / Bayesian", "Bayesian network\ninference + graph build")
+}
+
+ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Diagnostic sessions,\naudit log")
+ContainerDb(pg, "PostgreSQL\n+ pgvector", "PostgreSQL 16", "Causal graphs,\npatient embeddings")
+Container(sbus, "Service Bus", "Azure Service Bus", "Domain events")
+
+Rel(sbus, bus_handler, "Delivers events", "AMQP")
+Rel(bus_handler, mediatr, "Dispatches commands")
+Rel(api, mediatr, "Dispatches queries")
+Rel(mediatr, cmd_handler, "Routes commands")
+Rel(mediatr, query_handlers, "Routes queries")
+Rel(cmd_handler, grpc_client, "Requests inference")
+Rel(grpc_client, ml_facade, "gRPC calls", "HTTP/2")
+Rel(ml_facade, classifier, "Classify")
+Rel(ml_facade, causal, "Infer causes")
+Rel(cmd_handler, repo, "Persist session")
+Rel(query_handlers, repo, "Read data")
+Rel(repo, cosmos, "Sessions, audit", "SDK")
+Rel(repo, pg, "Graphs, embeddings", "Npgsql")
+Rel(cmd_handler, event_pub, "Publish result")
+Rel(event_pub, sbus, "DiagnosisCompleted", "AMQP")
+
+LAYOUT_WITH_LEGEND()
+
+@enduml

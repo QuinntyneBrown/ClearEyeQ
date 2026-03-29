@@ -1,0 +1,87 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title FHIR Interoperability - Domain Model
+
+package "FHIR Interoperability Domain" {
+
+    class FhirMappingProfile <<Entity>> {
+        + ProfileId : Guid
+        + ResourceType : FhirResourceType
+        + SourceContextName : string
+        + MappingVersion : string
+        + IsActive : bool
+        --
+        + GetFieldMappings() : List<FieldMapping>
+        + Validate() : ValidationResult
+    }
+
+    class PatientResourceMapper <<Service>> {
+        --
+        + MapToFhir(internalPatient) : FhirPatient
+        + MapFromFhir(fhirPatient) : InternalPatient
+    }
+
+    class ObservationMapper <<Service>> {
+        --
+        + MapScanToObservation(scanResult) : FhirObservation
+        + MapCodingSystems(codes) : List<Coding>
+    }
+
+    class DiagnosticReportMapper <<Service>> {
+        --
+        + MapToReport(diagnostic) : FhirDiagnosticReport
+        + AttachObservations(report, observations) : void
+    }
+
+    class MedicationRequestMapper <<Service>> {
+        --
+        + MapTreatmentPlan(plan) : FhirMedicationRequest
+    }
+
+    class ExportJob <<Aggregate Root>> {
+        + JobId : Guid
+        + PatientId : Guid
+        + RequestedBy : Guid
+        + Status : ExportJobStatus
+        + ResourceTypes : List<FhirResourceType>
+        + BundleUrl : string?
+        + CreatedAt : DateTimeOffset
+        + CompletedAt : DateTimeOffset?
+        --
+        + Start() : void
+        + MarkCompleted(bundleUrl) : void
+        + MarkFailed(reason) : void
+    }
+
+    class FhirEndpoint <<Entity>> {
+        + EndpointId : Guid
+        + BaseUrl : string
+        + Name : string
+        + AuthMethod : SmartAuthMethod
+        + ClientId : string
+        + IsActive : bool
+        --
+        + TestConnection() : Task<bool>
+    }
+
+    enum FhirResourceType {
+        Patient
+        Observation
+        DiagnosticReport
+        MedicationRequest
+        DocumentReference
+        Encounter
+    }
+}
+
+FhirMappingProfile --> FhirResourceType : maps
+PatientResourceMapper ..> FhirMappingProfile : uses
+ObservationMapper ..> FhirMappingProfile : uses
+DiagnosticReportMapper ..> FhirMappingProfile : uses
+ExportJob --> FhirResourceType : includes
+ExportJob ..> FhirEndpoint : delivers to
+
+@enduml

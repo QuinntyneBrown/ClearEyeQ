@@ -1,0 +1,69 @@
+@startuml class-infrastructure
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Identity & Access -- Infrastructure Layer
+
+package "Application Interfaces" {
+    interface IUserRepository
+    interface IAuditLogger
+    interface IConsentService
+    interface ITokenProvider
+}
+
+package "Infrastructure" {
+
+    package "Persistence" {
+        class CosmosUserRepository {
+            -_container : Container
+            +GetByEmailAsync(email) : User?
+            +GetByIdAsync(id) : User?
+            +SaveAsync(user) : void
+        }
+
+        class CosmosAuditLogRepository {
+            -_container : Container
+            +LogAsync(entry) : void
+        }
+
+        class CosmosConsentRepository {
+            -_container : Container
+            +GrantAsync(userId, type) : void
+            +RevokeAsync(userId, type) : void
+        }
+    }
+
+    package "Security" {
+        class JwtTokenProvider {
+            -_signingKey : SecurityKey
+            -_redisCache : IConnectionMultiplexer
+            +GenerateAccessToken(user) : string
+            +GenerateRefreshToken(user) : string
+            +ValidateRefreshToken(token) : bool
+        }
+    }
+
+    package "External OAuth" {
+        class AzureADB2CHandler {
+            +AuthenticateAsync(code) : ExternalIdentity
+        }
+
+        class GoogleOAuthHandler {
+            +AuthenticateAsync(code) : ExternalIdentity
+        }
+
+        class AppleOAuthHandler {
+            +AuthenticateAsync(code) : ExternalIdentity
+        }
+    }
+}
+
+CosmosUserRepository .up.|> IUserRepository
+CosmosAuditLogRepository .up.|> IAuditLogger
+CosmosConsentRepository .up.|> IConsentService
+JwtTokenProvider .up.|> ITokenProvider
+
+@enduml

@@ -1,0 +1,53 @@
+@startuml c4-component
+!include <C4/C4_Component>
+
+title Scan Engine — Component Diagram (C4 Level 3)
+
+skinparam defaultFontSize 11
+
+Container_Boundary(scan_service, "Scan Service (.NET 9)") {
+
+    Component(controllers, "Scan API Controllers", "ASP.NET Core", "REST endpoints for\nscan initiation,\nresults, comparison")
+
+    Component(signalr, "ScanHub", "SignalR", "Real-time positioning\nfeedback and result\npush to mobile client")
+
+    Component(handlers, "MediatR Handlers", "MediatR", "InitiateScan, ProcessScan,\nGetScanResult,\nCompareScan handlers")
+
+    Component(domain, "Domain Layer", ".NET", "Scan aggregate, ScanImage,\nvalue objects, domain events")
+
+    Component(infra_repo, "ScanRepository", "EF Core / Cosmos SDK", "Persistence for\nScan aggregates")
+
+    Component(infra_blob, "ImageStore", "Azure.Storage.Blobs", "Upload / retrieve\nscan images")
+
+    Component(infra_grpc, "MLInferenceClient", "Grpc.Net.Client", "gRPC client to\nPython ML sidecar")
+
+    Component(infra_bus, "EventPublisher", "Azure.Messaging", "Publish ScanCompleted\nevents to Service Bus")
+}
+
+Container_Boundary(ml_sidecar, "Scan ML Sidecar (Python)") {
+    Component(ml_service, "ScanMLService", "gRPC / Python", "Image preprocessing,\nredness scoring,\ntear film analysis")
+}
+
+ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Scan records")
+ContainerDb(blob, "Blob Storage", "Azure Blob", "Scan images")
+Container(bus, "Service Bus", "Azure Service Bus", "Domain events")
+Container(gateway, "API Gateway", ".NET 9 / YARP", "Routing, auth")
+
+Rel(gateway, controllers, "Routes requests", "HTTPS")
+Rel(gateway, signalr, "WebSocket upgrade", "WSS")
+Rel(controllers, handlers, "Sends commands\nand queries", "MediatR")
+Rel(signalr, handlers, "Sends ProcessScan\ncommand", "MediatR")
+Rel(signalr, infra_grpc, "Positioning feedback\n(streaming)", "gRPC")
+Rel(handlers, domain, "Invokes aggregate\nmethods")
+Rel(handlers, infra_repo, "Reads / writes\nscan state")
+Rel(handlers, infra_blob, "Stores / retrieves\nimages")
+Rel(handlers, infra_grpc, "Requests ML\ninference", "gRPC")
+Rel(handlers, infra_bus, "Publishes events")
+Rel(infra_grpc, ml_service, "AnalyzeScan /\nGetPositioning", "gRPC")
+Rel(infra_repo, cosmos, "Read / write", "Cosmos SDK")
+Rel(infra_blob, blob, "Upload / download", "HTTPS")
+Rel(infra_bus, bus, "Publish", "AMQP")
+
+LAYOUT_WITH_LEGEND()
+
+@enduml

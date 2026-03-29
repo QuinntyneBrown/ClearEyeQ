@@ -1,0 +1,80 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Subscription and Billing - Application Services (CQRS + MediatR)
+
+package "Commands" <<Rectangle>> {
+
+    class CreateSubscriptionCommand <<Command>> {
+        + UserId : Guid
+        + PlanId : Guid
+        + PaymentMethodId : string?
+    }
+
+    class UpgradePlanCommand <<Command>> {
+        + SubscriptionId : Guid
+        + NewPlanId : Guid
+        + Prorate : bool
+    }
+
+    class CancelSubscriptionCommand <<Command>> {
+        + SubscriptionId : Guid
+        + Reason : string?
+        + Immediate : bool
+    }
+
+    class HandleStripeWebhookCommand <<Command>> {
+        + EventType : string
+        + Payload : string
+        + StripeSignature : string
+    }
+
+    class RecordUsageCommand <<Command>> {
+        + SubscriptionId : Guid
+        + FeatureKey : string
+        + Amount : long
+    }
+}
+
+package "Queries" <<Rectangle>> {
+
+    class CheckFeatureAccessQuery <<Query>> {
+        + UserId : Guid
+        + FeatureKey : string
+    }
+
+    class GetSubscriptionQuery <<Query>> {
+        + UserId : Guid
+    }
+
+    class GetUsageSummaryQuery <<Query>> {
+        + SubscriptionId : Guid
+    }
+}
+
+package "Handlers" <<Rectangle>> {
+
+    class CreateSubscriptionHandler <<Handler>> {
+        - _stripeClient : IStripeClient
+        - _repository : ISubscriptionRepository
+        - _bus : IServiceBus
+        --
+        + Handle(command) : Result<SubscriptionDto>
+    }
+
+    class HandleStripeWebhookHandler <<Handler>> {
+        - _repository : ISubscriptionRepository
+        - _bus : IServiceBus
+        --
+        + Handle(command) : Result
+    }
+}
+
+CreateSubscriptionCommand --> CreateSubscriptionHandler
+UpgradePlanCommand --> CreateSubscriptionHandler
+HandleStripeWebhookCommand --> HandleStripeWebhookHandler
+CheckFeatureAccessQuery --> CreateSubscriptionHandler
+
+@enduml

@@ -1,0 +1,51 @@
+@startuml seq-72h-forecast
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title 72-Hour Forecast Generation
+
+actor "Scheduler /\nUser Request" as Trigger
+participant "PredictiveController" as Controller
+participant "MediatR" as MediatR
+participant "GenerateForecast\nHandler" as Handler
+participant "IPatientHistory\nRepository" as History
+participant "IPredictiveMLClient\n(gRPC)" as MLClient
+participant "IForecastCache\n(Redis)" as Cache
+participant "Azure Service Bus" as Bus
+participant "SignalR Hub" as SignalR
+
+Trigger -> Controller : POST /api/predictions/forecast\n{userId}
+Controller -> MediatR : Send(GenerateForecastCommand)
+MediatR -> Handler : Handle(command)
+
+Handler -> History : GetFeatureWindowAsync(userId, 30)
+History --> Handler : FeatureMatrix (30-day window)
+
+Handler -> MLClient : ForecastAsync(featureMatrix)
+note right of MLClient
+  Python TFT model produces
+  72h predictions aggregated
+  to 3 daily windows
+end note
+MLClient --> Handler : ForecastResult\n{days[], scores[], intervals[]}
+
+Handler -> Handler : Build Prediction aggregate\nwith ForecastWindow entities
+
+Handler -> History : SavePredictionAsync(prediction)
+History --> Handler : Persisted
+
+Handler -> Cache : SetAsync(userId, forecast, TTL=1h)
+Cache --> Handler : Cached
+
+Handler -> Bus : Publish(ForecastGenerated)
+Bus --> Handler : Accepted
+
+Handler --> MediatR : PredictionDto
+MediatR --> Controller : PredictionDto
+Controller --> Trigger : 200 OK\n{predictionId, windows[]}
+
+Bus -> SignalR : ForecastGenerated subscription
+SignalR -> Trigger : Push forecast update\nto connected clients
+
+@enduml

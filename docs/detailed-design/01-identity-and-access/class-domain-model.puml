@@ -1,0 +1,92 @@
+@startuml class-domain-model
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Identity & Access -- Domain Model
+
+package "Identity & Access Domain" {
+
+    enum Role {
+        Patient
+        Clinician
+        Admin
+    }
+
+    enum AccountStatus {
+        Active
+        Suspended
+        Locked
+        PendingVerification
+    }
+
+    class User <<Aggregate Root>> {
+        +UserId : Guid
+        +TenantId : Guid
+        +Email : string
+        +PasswordHash : string
+        +MfaEnabled : bool
+        +Status : AccountStatus
+        +CreatedAt : DateTimeOffset
+        --
+        +AssignRole(role) : void
+        +GrantConsent(type) : void
+        +RevokeConsent(type) : void
+        +EnableMfa(device) : void
+        +Suspend() : void
+    }
+
+    class Tenant {
+        +TenantId : Guid
+        +Name : string
+        +Plan : string
+        +CreatedAt : DateTimeOffset
+    }
+
+    class Permission {
+        +PermissionId : Guid
+        +Name : string
+        +Description : string
+    }
+
+    class Consent <<Entity>> {
+        +ConsentId : Guid
+        +ConsentType : string
+        +GrantedAt : DateTimeOffset
+        +RevokedAt : DateTimeOffset?
+        +IsActive : bool
+    }
+
+    class AuditEntry <<Value Object>> {
+        +Timestamp : DateTimeOffset
+        +ActorId : Guid
+        +Action : string
+        +IpAddress : string
+        +Details : string
+    }
+
+    class RefreshToken <<Value Object>> {
+        +Token : string
+        +DeviceFingerprint : string
+        +ExpiresAt : DateTimeOffset
+        +IsRevoked : bool
+    }
+
+    class MfaDevice <<Entity>> {
+        +DeviceId : Guid
+        +SharedSecret : string
+        +VerifiedAt : DateTimeOffset?
+    }
+}
+
+User "1" *-- "0..*" Consent
+User "1" *-- "0..*" RefreshToken
+User "1" *-- "0..1" MfaDevice
+User "1" --> "1..*" Role
+User "1" --> "1" Tenant
+Role "1" --> "0..*" Permission
+User ..> AuditEntry : produces
+
+@enduml

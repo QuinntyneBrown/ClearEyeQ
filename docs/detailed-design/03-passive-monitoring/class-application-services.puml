@@ -1,0 +1,86 @@
+@startuml class-application-services
+title Passive Monitoring — Application Services
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+skinparam linetype ortho
+
+package "Commands & Handlers" {
+
+    class IngestWearableDataCommand <<Command>> {
+        +UserId : Guid
+        +Source : WearableSource
+        +DataPoints : List<WearableDataPointDto>
+    }
+
+    class RecordBlinkRateCommand <<Command>> {
+        +UserId : Guid
+        +BlinksPerMinute : double
+        +FatigueScore : double
+        +DurationSeconds : int
+        +ModelVersion : string
+    }
+
+    class AssessSleepCommand <<Command>> {
+        +UserId : Guid
+        +Date : DateOnly
+    }
+
+    class SyncMonitoringDataCommand <<Command>> {
+        +UserId : Guid
+        +Sources : List<WearableSource>
+        +SyncSince : DateTimeOffset
+    }
+
+    class IngestWearableDataHandler <<Handler>> {
+        +Handle(cmd) : Unit
+    }
+
+    class RecordBlinkRateHandler <<Handler>> {
+        +Handle(cmd) : Unit
+    }
+
+    class AssessSleepHandler <<Handler>> {
+        +Handle(cmd) : Unit
+    }
+
+    class SyncMonitoringDataHandler <<Handler>> {
+        +Handle(cmd) : Unit
+    }
+}
+
+package "Interfaces" {
+
+    interface IWearableAdapter {
+        +FetchDataAsync(userId, since) : List<WearableDataPointDto>
+        +Source : WearableSource
+    }
+
+    interface IMonitoringRepository {
+        +GetSessionAsync(id) : MonitoringSession?
+        +GetActiveSessionAsync(userId) : MonitoringSession?
+        +SaveAsync(session) : void
+    }
+
+    interface ISleepScorer {
+        +ComputeQualityScore(stages, duration, spO2) : double
+    }
+}
+
+note right of IWearableAdapter
+  Implementations:
+  - HealthKitAdapter
+  - GoogleFitAdapter
+  - OuraAdapter
+  - WhoopAdapter
+end note
+
+IngestWearableDataHandler --> IWearableAdapter : uses
+IngestWearableDataHandler --> IMonitoringRepository : persists via
+RecordBlinkRateHandler --> IMonitoringRepository : persists via
+AssessSleepHandler --> ISleepScorer : scores via
+AssessSleepHandler --> IMonitoringRepository : reads/writes
+SyncMonitoringDataHandler --> IWearableAdapter : fetches via
+SyncMonitoringDataHandler --> IMonitoringRepository : persists via
+
+@enduml

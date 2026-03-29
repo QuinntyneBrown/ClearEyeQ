@@ -1,0 +1,60 @@
+@startuml class-closed-loop
+title Treatment Orchestration — Closed-Loop Domain Services
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Closed-Loop Services" {
+
+    class EfficacyTracker <<DomainService>> {
+        +ComputeEfficacy(plan, latestScan) : EfficacyMeasurement
+        +GetImprovementTrajectory(planId) : Trajectory
+        -compareToBaseline(baseline, current) : double
+    }
+
+    class EscalationEngine <<DomainService>> {
+        +Evaluate(plan, measurements) : EscalationDecision
+        +GenerateReferralPackage(plan) : ReferralPackage
+        -isThresholdBreached(rule, measurements) : bool
+    }
+
+    class ResolutionVerifier <<DomainService>> {
+        +VerifyAtCheckpoint(plan, dayMark) : ResolutionResult
+        +GetNextCheckpoint(plan) : int
+        -meetsResolutionCriteria(measurements) : bool
+    }
+
+    class RelapsePreventionPlanner <<DomainService>> {
+        +CreateMaintenancePlan(resolvedPlan) : TreatmentPhase
+        +DetectRegression(plan, newMeasurement) : bool
+        -selectPreventiveInterventions(history) : List<Intervention>
+    }
+}
+
+package "Abstractions" {
+
+    interface ITreatmentRepository <<Repository>> {
+        +GetByIdAsync(planId) : TreatmentPlan
+        +SaveAsync(plan) : void
+        +GetByUserIdAsync(userId) : List<TreatmentPlan>
+    }
+
+    interface IEfficacyCalculator <<Service>> {
+        +CalculateScore(baseline, current) : double
+        +CalculateTrajectory(measurements) : Trajectory
+    }
+
+    interface IDomainEventPublisher <<Port>> {
+        +PublishAsync(event) : void
+    }
+}
+
+EfficacyTracker --> ITreatmentRepository
+EfficacyTracker --> IEfficacyCalculator
+EscalationEngine --> ITreatmentRepository
+EscalationEngine --> IDomainEventPublisher
+ResolutionVerifier --> ITreatmentRepository
+ResolutionVerifier --> IEfficacyCalculator
+RelapsePreventionPlanner --> ITreatmentRepository
+
+@enduml

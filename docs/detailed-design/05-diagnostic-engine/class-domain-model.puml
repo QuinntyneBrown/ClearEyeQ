@@ -1,0 +1,107 @@
+@startuml class-domain-model
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Diagnostic Engine -- Domain Model
+
+package "Diagnostic Engine Domain" {
+
+    enum DiagnosticSessionStatus {
+        Pending
+        GatheringContext
+        RunningInference
+        BuildingCausalGraph
+        Completed
+        Failed
+    }
+
+    enum CausalFactorType {
+        Environmental
+        Medication
+        Genetic
+        Behavioral
+        Psychosomatic
+        Sleep
+        ScreenTime
+    }
+
+    enum Severity {
+        None
+        Mild
+        Moderate
+        Severe
+        Critical
+    }
+
+    class DiagnosticSession <<Aggregate Root>> {
+        +SessionId : Guid
+        +UserId : Guid
+        +TenantId : Guid
+        +ScanId : Guid
+        +Status : DiagnosticSessionStatus
+        +CreatedAt : DateTimeOffset
+        +CompletedAt : DateTimeOffset?
+        +ModelVersion : string
+        --
+        +AddDiagnosis(diagnosis) : void
+        +AttachCausalGraph(graph) : void
+        +MarkCompleted() : void
+        +MarkFailed(reason) : void
+    }
+
+    class DifferentialDiagnosis <<Entity>> {
+        +DiagnosisId : Guid
+        +ConditionId : string
+        +ConditionName : string
+        +IcdCode : string
+        +ConfidenceScore : decimal
+        +Severity : Severity
+        +IsPrimary : bool
+        --
+        +AddEvidence(evidence) : void
+    }
+
+    class Evidence <<Value Object>> {
+        +SourceType : string
+        +SourceId : Guid
+        +Description : string
+        +Contribution : decimal
+        +Timestamp : DateTimeOffset
+    }
+
+    class CausalGraph <<Entity>> {
+        +GraphId : Guid
+        +CreatedAt : DateTimeOffset
+        --
+        +AddFactor(factor) : void
+        +AddRelation(relation) : void
+        +GetRootCauses() : CausalFactor[]
+    }
+
+    class CausalFactor <<Value Object>> {
+        +FactorId : string
+        +Name : string
+        +Type : CausalFactorType
+        +Probability : decimal
+    }
+
+    class CausalRelation <<Value Object>> {
+        +SourceFactorId : string
+        +TargetFactorId : string
+        +Weight : decimal
+        +Direction : string
+    }
+}
+
+DiagnosticSession "1" *-- "1..*" DifferentialDiagnosis
+DiagnosticSession "1" *-- "0..1" CausalGraph
+DifferentialDiagnosis "1" *-- "1..*" Evidence
+CausalGraph "1" *-- "1..*" CausalFactor
+CausalGraph "1" *-- "1..*" CausalRelation
+CausalFactor --> CausalFactorType
+DifferentialDiagnosis --> Severity
+
+@enduml

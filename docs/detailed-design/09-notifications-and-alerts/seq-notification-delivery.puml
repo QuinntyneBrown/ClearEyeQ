@@ -1,0 +1,61 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1
+skinparam maxMessageSize 180
+
+title Notification Delivery Flow
+
+participant "Source\nContext" as source
+participant "Azure\nService Bus" as bus
+participant "Event\nConsumer" as consumer
+participant "AlertRule\nEngine" as rules
+participant "Preference\nService" as prefs
+participant "QuietHours\nService" as quiet
+participant "Rate\nLimiter" as rate
+participant "Channel\nDispatcher" as dispatch
+participant "Template\nEngine" as template
+database "PostgreSQL" as db
+
+== Event Received ==
+
+source -> bus : Integration Event\n(e.g., EscalationTriggered)
+bus -> consumer : Deliver event
+activate consumer
+
+consumer -> rules : Evaluate(eventData)
+rules --> consumer : AlertRule matched\n(category=Urgent, priority=High)
+
+== Preference & Policy Check ==
+
+consumer -> prefs : GetPreferences(recipientId, category)
+prefs -> db : SELECT preferences
+db --> prefs : NotificationPreference
+prefs --> consumer : enabledChannels=[Push, Email, InApp]
+
+consumer -> quiet : IsActive(recipientId, now)
+quiet --> consumer : false (not in quiet hours)
+
+consumer -> rate : CheckLimit(recipientId, category)
+rate --> consumer : allowed (under threshold)
+
+== Format & Dispatch ==
+
+consumer -> template : Render(templateId, channels, data)
+template --> consumer : formatted messages per channel
+
+consumer -> dispatch : Send(Push, formattedMessage)
+dispatch --> consumer : DeliveryAttempt(Push, Sent)
+
+consumer -> dispatch : Send(Email, formattedMessage)
+dispatch --> consumer : DeliveryAttempt(Email, Sent)
+
+consumer -> dispatch : Send(InApp, formattedMessage)
+dispatch --> consumer : DeliveryAttempt(InApp, Delivered)
+
+== Persist & Track ==
+
+consumer -> db : INSERT notification\n+ delivery_attempts
+consumer -> bus : NotificationDelivered event
+deactivate consumer
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml seq-scan-capture
+title Scan Engine — Full Scan Capture Flow
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+actor "Mobile App" as App
+participant "API Gateway" as GW
+participant "ScanHub\n(SignalR)" as Hub
+participant "ScanController" as API
+participant "MediatR" as Med
+participant "Scan\nAggregate" as Scan
+participant "Blob Storage" as Blob
+participant "ML Sidecar\n(gRPC)" as ML
+participant "Cosmos DB" as DB
+participant "Service Bus" as Bus
+
+== Initiate Scan ==
+App -> GW : POST /scans (JWT)
+GW -> API : InitiateScan
+API -> Med : InitiateScanCommand
+Med -> Scan : new Scan(userId, eyeSide)
+Med -> DB : persist(Scan)
+API --> App : 201 { scanId }
+
+== AI-Guided Positioning (real-time loop) ==
+App -> Hub : Connect(scanId)
+loop every ~100ms until aligned
+    App -> Hub : SendFrame(frameBytes)
+    Hub -> ML : GetPositioningFeedback(frame)
+    ML --> Hub : AlignmentResult
+    Hub --> App : PositioningFeedback\n(score, hint, isReady)
+end
+
+== Burst Capture ==
+App -> Hub : CaptureStarted(frameCount)
+Hub -> Scan : Status = Capturing
+loop 10-20 frames
+    App -> Blob : Upload frame\n(SAS token)
+end
+App -> Hub : CaptureCompleted
+
+== ML Processing ==
+Hub -> Med : ProcessScanCommand
+Med -> Scan : Status = Processing
+Med -> Blob : Retrieve best frame URI
+Med -> ML : AnalyzeScan(imageUri, ambient)
+ML -> ML : Preprocess\n(crop, normalize, light comp.)
+ML -> ML : RednessScorer.infer()
+ML -> ML : TearFilmAnalyzer.analyze()
+ML --> Med : ScanAnalysisResult\n(redness, tearFilm)
+
+== Persist & Publish ==
+Med -> Scan : RecordResults(redness, tearFilm)
+Scan -> Scan : Status = Completed\n+ raise ScanCompleted event
+Med -> DB : persist(Scan)
+Med -> Bus : publish ScanCompletedEvent
+
+== Push Result to Client ==
+Hub --> App : ScanResult\n(redness, tearFilm, status)
+
+@enduml

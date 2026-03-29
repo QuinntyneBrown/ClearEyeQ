@@ -1,0 +1,76 @@
+@startuml seq-differential-diagnosis
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title Diagnostic Engine -- Differential Diagnosis Flow
+
+participant "Service Bus" as Bus
+participant "ScanCompleted\nHandler" as Handler
+participant "MediatR\nPipeline" as MediatR
+participant "GenerateDiagnosis\nHandler" as CmdHandler
+participant "Monitoring\nService" as MonSvc
+participant "Environmental\nService" as EnvSvc
+participant "Medication\nRepository" as MedRepo
+participant "Genetic Data\nProvider" as GenProv
+participant "Python ML\n(gRPC)" as ML
+participant "Diagnostic\nRepository" as Repo
+
+Bus -> Handler : ScanCompleted event
+activate Handler
+
+Handler -> MediatR : dispatch GenerateDiagnosisCommand
+activate MediatR
+
+MediatR -> CmdHandler : Handle(command)
+activate CmdHandler
+
+note over CmdHandler : Create DiagnosticSession\nStatus = GatheringContext
+
+par Gather Context
+    CmdHandler -> MonSvc : GetLatestMonitoringData(userId)
+    MonSvc --> CmdHandler : sleep, blink-rate, wearable telemetry
+    CmdHandler -> EnvSvc : GetLatestSnapshot(userId, location)
+    EnvSvc --> CmdHandler : AQI, pollen, UV, humidity
+    CmdHandler -> MedRepo : GetActiveMedications(userId)
+    MedRepo --> CmdHandler : medication list
+    CmdHandler -> GenProv : GetFamilyHistory(userId)
+    GenProv --> CmdHandler : family history, genetic markers
+end
+
+note over CmdHandler : Fuse features into\nunified FeatureVector
+
+CmdHandler -> ML : RunDiagnosticPipeline(features)
+activate ML
+
+note over ML : DiagnosticClassifier:\nmulti-label classification\n+ confidence calibration
+
+note over ML : MedicationInteractionChecker:\ncross-reference medications
+
+note over ML : GeneticRiskScorer:\nadjust risk multipliers
+
+note over ML : CausalInferenceEngine:\nBayesian inference +\ngraph construction
+
+ML --> CmdHandler : DiagnosticResult\n(conditions, causal graph,\ninteractions, risk scores)
+deactivate ML
+
+note over CmdHandler : Assemble DifferentialDiagnosis\nentities with Evidence links
+
+note over CmdHandler : Attach CausalGraph\nto session
+
+CmdHandler -> Repo : SaveSession(session)
+activate Repo
+Repo --> CmdHandler : persisted
+deactivate Repo
+
+CmdHandler -> Bus : publish DiagnosisCompleted
+note right : includes SessionId,\ncondition list, severities
+
+CmdHandler --> MediatR : SessionId
+deactivate CmdHandler
+
+MediatR --> Handler : result
+deactivate MediatR
+deactivate Handler
+
+@enduml

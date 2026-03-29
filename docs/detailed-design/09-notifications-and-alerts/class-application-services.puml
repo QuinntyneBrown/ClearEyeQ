@@ -1,0 +1,78 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Notifications and Alerts - Application Services (CQRS + MediatR)
+
+package "Commands" <<Rectangle>> {
+
+    class SendNotificationCommand <<Command>> {
+        + RecipientId : Guid
+        + Category : NotificationCategory
+        + Title : string
+        + Body : string
+        + Priority : NotificationPriority
+        + Data : Dictionary<string, string>?
+    }
+
+    class UpdatePreferencesCommand <<Command>> {
+        + UserId : Guid
+        + Category : NotificationCategory
+        + EnabledChannels : List<NotificationChannel>
+        + IsEnabled : bool
+    }
+
+    class SetQuietHoursCommand <<Command>> {
+        + UserId : Guid
+        + StartTime : TimeOnly
+        + EndTime : TimeOnly
+        + TimeZone : string
+    }
+
+    class MarkAsReadCommand <<Command>> {
+        + NotificationId : Guid
+        + UserId : Guid
+    }
+}
+
+package "Queries" <<Rectangle>> {
+
+    class GetNotificationsQuery <<Query>> {
+        + UserId : Guid
+        + UnreadOnly : bool
+        + PageNumber : int
+        + PageSize : int
+    }
+
+    class GetPreferencesQuery <<Query>> {
+        + UserId : Guid
+    }
+}
+
+package "Handlers" <<Rectangle>> {
+
+    class SendNotificationHandler <<Handler>> {
+        - _preferences : IPreferenceRepository
+        - _quietHours : IQuietHoursService
+        - _rateLimiter : IRateLimiter
+        - _dispatcher : IChannelDispatcher
+        --
+        + Handle(command) : Result
+    }
+
+    class UpdatePreferencesHandler <<Handler>> {
+        - _repository : IPreferenceRepository
+        --
+        + Handle(command) : Result
+    }
+}
+
+SendNotificationCommand --> SendNotificationHandler
+UpdatePreferencesCommand --> UpdatePreferencesHandler
+SetQuietHoursCommand --> UpdatePreferencesHandler
+MarkAsReadCommand --> SendNotificationHandler
+GetNotificationsQuery --> SendNotificationHandler
+GetPreferencesQuery --> UpdatePreferencesHandler
+
+@enduml

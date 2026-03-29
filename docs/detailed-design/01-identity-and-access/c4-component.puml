@@ -1,0 +1,51 @@
+@startuml c4-component
+
+!include <C4/C4_Component>
+
+skinparam defaultFontSize 11
+
+title Identity & Access Service -- C4 Component Diagram (Level 3)
+
+Container_Boundary(identity_service, "Identity & Access Service") {
+
+    Component(controllers, "API Controllers", ".NET 9 / ASP.NET Core", "REST endpoints for registration, authentication, consent, and session management")
+
+    Component(pipeline, "MediatR Pipeline", "MediatR + FluentValidation", "CQRS dispatch with validation and logging behaviors")
+
+    Component(domain, "Domain Layer", "C# Aggregates & Entities", "User aggregate root, Consent, Role, Permission, AuditEntry")
+
+    Component(app_services, "Application Handlers", "C# IRequestHandler", "RegisterUser, Authenticate, RefreshToken, GrantConsent, RevokeConsent")
+
+    Component(infra_cosmos, "Cosmos Repositories", "Azure Cosmos DB SDK", "CosmosUserRepository, CosmosAuditLogRepository, CosmosConsentRepository")
+
+    Component(token_provider, "JWT Token Provider", "System.IdentityModel", "Signs access tokens, manages refresh token rotation")
+
+    Component(oauth_handlers, "OAuth Handlers", "HttpClient", "Apple, Google, and Azure AD B2C federation")
+}
+
+ContainerDb(cosmos, "Azure Cosmos DB", "NoSQL", "Users, Consents, Audit Logs\nPartitioned by TenantId")
+
+ContainerDb(redis, "Redis Cache", "In-memory", "Refresh tokens, session state, rate-limit counters")
+
+System_Ext(apple, "Apple Sign-In", "OAuth 2.0 + PKCE")
+System_Ext(google, "Google Identity", "OAuth 2.0 + PKCE")
+System_Ext(adb2c, "Azure AD B2C", "OIDC Federation")
+
+Container_Ext(mobile, "Mobile App", "React Native", "Patient and Clinician client")
+Container_Ext(gateway, "API Gateway", "Azure APIM", "Rate limiting, TLS termination")
+
+Rel(mobile, gateway, "HTTPS")
+Rel(gateway, controllers, "Routes requests")
+Rel(controllers, pipeline, "Sends commands / queries")
+Rel(pipeline, app_services, "Dispatches to handler")
+Rel(app_services, domain, "Invokes aggregate methods")
+Rel(app_services, infra_cosmos, "Persists / reads via")
+Rel(app_services, token_provider, "Issues tokens via")
+Rel(app_services, oauth_handlers, "Delegates social auth")
+Rel(infra_cosmos, cosmos, "Read / Write")
+Rel(token_provider, redis, "Store / validate refresh tokens")
+Rel(oauth_handlers, apple, "OAuth 2.0")
+Rel(oauth_handlers, google, "OAuth 2.0")
+Rel(oauth_handlers, adb2c, "OIDC")
+
+@enduml

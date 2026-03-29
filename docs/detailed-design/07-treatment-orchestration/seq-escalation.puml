@@ -1,0 +1,35 @@
+@startuml seq-escalation
+title Specialist Escalation Flow
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+participant "EscalationEngine" as Engine
+participant "ITreatmentRepository\n(Cosmos)" as Repo
+participant "ReferralPackage\nBuilder" as Builder
+participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+participant "Clinical Portal" as Portal
+participant "Notifications\nService" as Notify
+
+Engine -> Repo : GetPlanWithMeasurements(planId)
+Repo --> Engine : TreatmentPlan + EfficacyHistory
+
+Engine -> Engine : Confirm efficacy below\nthreshold for N+ days
+
+Engine -> Builder : GenerateReferralPackage(plan)
+Builder -> Builder : Compile diagnosis summary,\ntreatment history, scan trends,\nand efficacy trajectory
+Builder --> Engine : ReferralPackage
+
+Engine -> Repo : SaveAsync(plan.Escalate(reason))
+Repo --> Engine : Success
+
+Engine -> Publisher : PublishAsync(EscalationTriggered\n{planId, referralPackage, urgency})
+Publisher --> Engine : Acknowledged
+
+Publisher -> Portal : EscalationTriggered\n(subscription)
+Portal -> Portal : Display referral in\nclinician dashboard
+
+Publisher -> Notify : EscalationTriggered\n(subscription)
+Notify -> Notify : Send push notification\nto patient and clinician
+
+@enduml

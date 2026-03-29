@@ -1,0 +1,94 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Subscription and Billing - Domain Model
+
+package "Subscription Domain" {
+
+    class Subscription <<Aggregate Root>> {
+        + SubscriptionId : Guid
+        + UserId : Guid
+        + PlanId : Guid
+        + Status : SubscriptionStatus
+        + StripeSubscriptionId : string
+        + StripeCustomerId : string
+        + CurrentPeriodStart : DateTimeOffset
+        + CurrentPeriodEnd : DateTimeOffset
+        --
+        + Upgrade(newPlan) : void
+        + Downgrade(newPlan) : void
+        + Cancel() : void
+        + Suspend() : void
+        + Reactivate() : void
+    }
+
+    class Plan <<Entity>> {
+        + PlanId : Guid
+        + Name : string
+        + Tier : PlanTier
+        + MonthlyPrice : decimal
+        + StripePriceId : string
+        + Features : List<string>
+        + IsActive : bool
+    }
+
+    class BillingCycle <<Value Object>> {
+        + CycleId : Guid
+        + SubscriptionId : Guid
+        + PeriodStart : DateTimeOffset
+        + PeriodEnd : DateTimeOffset
+        + AmountDue : decimal
+        + AmountPaid : decimal
+        + Status : BillingCycleStatus
+        + StripeInvoiceId : string?
+    }
+
+    class FeatureGate <<Entity>> {
+        + FeatureKey : string
+        + DisplayName : string
+        + RequiredTier : PlanTier
+        + IsMetered : bool
+        --
+        + IsAccessible(userTier) : bool
+    }
+
+    class UsageMeter <<Entity>> {
+        + MeterId : Guid
+        + SubscriptionId : Guid
+        + FeatureKey : string
+        + CurrentUsage : long
+        + Limit : long
+        + PeriodStart : DateTimeOffset
+        + PeriodEnd : DateTimeOffset
+        --
+        + Increment(amount) : void
+        + HasReachedLimit() : bool
+        + Reset() : void
+    }
+
+    enum PlanTier {
+        Free
+        Pro
+        Premium
+        Autonomous
+    }
+
+    enum SubscriptionStatus {
+        Active
+        PastDue
+        Suspended
+        Cancelled
+        Trialing
+    }
+}
+
+Subscription "1" --> "1" Plan : subscribes to
+Subscription "1" *-- "*" BillingCycle : billing history
+Subscription "1" *-- "*" UsageMeter : tracks usage
+Plan --> PlanTier : defines
+Plan .. FeatureGate : gates features
+Subscription --> SubscriptionStatus : has status
+
+@enduml

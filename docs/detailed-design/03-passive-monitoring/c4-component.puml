@@ -1,0 +1,43 @@
+@startuml c4-component
+!include <C4/C4_Component>
+
+title Passive Monitoring — Component Diagram (C4 Level 3)
+
+skinparam defaultFontSize 11
+
+Container_Boundary(device, "Mobile Device (React Native)") {
+    Component(tflite, "TFLite Eye Model", "TensorFlow Lite", "On-device blink detection\nand fatigue scoring")
+    Component(bridge, "Native Bridge", "React Native Bridge", "Camera access, model\ninvocation, result relay")
+    Component(syncClient, "Sync Client", "TypeScript", "Wearable SDK calls,\nnormalization, upload")
+}
+
+Container_Boundary(monitoringService, "Monitoring Service (.NET 9)") {
+    Component(controller, "Monitoring Controller", "ASP.NET Core", "REST endpoints for\nwearable sync, blink,\nsleep assessment")
+    Component(mediatr, "MediatR Pipeline", "MediatR", "Validation, logging,\ncommand dispatch")
+    Component(handlers, "Command Handlers", ".NET / MediatR", "IngestWearableData,\nRecordBlinkRate,\nAssessSleep, SyncData")
+    Component(sleepScorer, "Sleep Scorer", ".NET", "Composite sleep quality\nalgorithm")
+    Component(adapters, "Wearable Adapters", ".NET HttpClient", "HealthKit, GoogleFit,\nOura, Whoop adapters")
+    Component(repo, "Monitoring Repository", "EF Core / Cosmos SDK", "Persistence for\nMonitoringSession aggregate")
+}
+
+ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Monitoring sessions,\nwearable data points")
+Container(bus, "Service Bus", "Azure Service Bus", "MonitoringDataReceived\nevents")
+Container_Ext(healthkit, "HealthKit / Google Fit", "Platform SDK", "OS-level health data")
+Container_Ext(ouraApi, "Oura / Whoop API", "REST API", "Wearable vendor APIs")
+
+Rel(tflite, bridge, "Blink rate,\nfatigue score")
+Rel(bridge, syncClient, "Derived metrics")
+Rel(syncClient, controller, "POST metrics", "HTTPS")
+Rel(syncClient, healthkit, "Query health data")
+Rel(controller, mediatr, "Dispatch commands")
+Rel(mediatr, handlers, "Route to handler")
+Rel(handlers, sleepScorer, "Compute quality")
+Rel(handlers, adapters, "Fetch wearable data")
+Rel(handlers, repo, "Read/write sessions")
+Rel(adapters, ouraApi, "REST calls", "HTTPS")
+Rel(repo, cosmos, "Persist", "Cosmos SDK")
+Rel(handlers, bus, "Publish events", "AMQP")
+
+LAYOUT_WITH_LEGEND()
+
+@enduml

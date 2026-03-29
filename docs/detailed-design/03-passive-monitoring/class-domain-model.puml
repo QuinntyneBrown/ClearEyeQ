@@ -1,0 +1,96 @@
+@startuml class-domain-model
+title Passive Monitoring — Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+skinparam linetype ortho
+
+package "Passive Monitoring Domain" {
+
+    class MonitoringSession <<AggregateRoot>> {
+        +Id : Guid
+        +UserId : UserId
+        +StartedAt : DateTimeOffset
+        +EndedAt : DateTimeOffset?
+        +SessionType : SessionType
+        +Audit : AuditMetadata
+        +AddBlinkSample(sample) : void
+        +AddWearableDataPoint(dp) : void
+        +AttachSleepAssessment(sa) : void
+        +EvaluateThresholds() : void
+    }
+
+    class BlinkRateSample <<ValueObject>> {
+        +Timestamp : DateTimeOffset
+        +BlinksPerMinute : double
+        +DurationSeconds : int
+        +EyeSide : EyeSide?
+    }
+
+    class FatigueScore <<ValueObject>> {
+        +Value : double {0.0..1.0}
+        +ComputedAt : DateTimeOffset
+        +ModelVersion : string
+    }
+
+    class WearableDataPoint <<ValueObject>> {
+        +Source : WearableSource
+        +MetricType : MetricType
+        +Value : double
+        +Unit : string
+        +Timestamp : DateTimeOffset
+    }
+
+    class SleepAssessment <<Entity>> {
+        +Id : Guid
+        +SleepStart : DateTimeOffset
+        +SleepEnd : DateTimeOffset
+        +TotalDurationMinutes : int
+        +Stages : SleepStages
+        +QualityScore : double {0.0..1.0}
+        +Sources : List<WearableSource>
+    }
+
+    class SleepStages <<ValueObject>> {
+        +AwakeMinutes : int
+        +LightMinutes : int
+        +DeepMinutes : int
+        +RemMinutes : int
+    }
+
+    class PassiveAlert <<Entity>> {
+        +Id : Guid
+        +AlertType : AlertType
+        +Severity : Severity
+        +MetricType : MetricType
+        +ThresholdValue : double
+        +ActualValue : double
+        +TriggeredAt : DateTimeOffset
+        +Acknowledged : bool
+    }
+
+    enum WearableSource {
+        HealthKit
+        GoogleFit
+        Oura
+        Whoop
+    }
+
+    enum MetricType {
+        HeartRate
+        HRV
+        SpO2
+        SleepStage
+        BlinkRate
+        FatigueLevel
+    }
+}
+
+MonitoringSession "1" *-- "0..*" BlinkRateSample
+MonitoringSession "1" *-- "0..1" FatigueScore
+MonitoringSession "1" *-- "0..*" WearableDataPoint
+MonitoringSession "1" *-- "0..1" SleepAssessment
+MonitoringSession "1" *-- "0..*" PassiveAlert
+SleepAssessment *-- "1" SleepStages
+
+@enduml

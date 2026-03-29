@@ -1,0 +1,41 @@
+@startuml seq-flare-up-detection
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title Flare-Up Detection Flow
+
+participant "Azure Service Bus" as Bus
+participant "FlareUpEvent\nConsumer" as Consumer
+participant "MediatR" as MediatR
+participant "DetectFlareUpRisk\nHandler" as Handler
+participant "IPredictiveMLClient\n(gRPC)" as MLClient
+participant "Notification\nService" as Notif
+
+Bus -> Consumer : ScanCompleted /\nMonitoringDataReceived /\nEnvironmentalSnapshotUpdated
+Consumer -> MediatR : Send(DetectFlareUpRiskCommand)
+MediatR -> Handler : Handle(command)
+
+Handler -> Handler : Assemble 48-hour\nfeature vector
+
+Handler -> MLClient : EvaluateFlareUpRiskAsync(features)
+note right of MLClient
+  LightGBM classifier +
+  SHAP factor attribution
+end note
+MLClient --> Handler : RiskResult\n{probability, factors[]}
+
+alt Probability >= threshold (0.65)
+    Handler -> Handler : Create FlareUpAlert entity\nwith preventive actions
+    Handler -> Bus : Publish(FlareUpWarning)\n{userId, probability, triggers[]}
+    Bus --> Handler : Accepted
+    Bus -> Notif : FlareUpWarning subscription
+    Notif -> Notif : Send high-priority\nnotification (push + in-app)
+else Probability < threshold
+    Handler -> Handler : Log low-risk result;\nno alert published
+end
+
+Handler --> MediatR : RiskAssessmentDto
+MediatR --> Consumer : Complete
+
+@enduml

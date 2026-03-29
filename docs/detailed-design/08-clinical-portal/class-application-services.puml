@@ -1,0 +1,73 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Clinical Portal - Application Services (CQRS + MediatR)
+
+package "Queries" <<Rectangle>> {
+
+    class GetPatientListQuery <<Query>> {
+        + ClinicianId : Guid
+        + SearchTerm : string?
+        + PageNumber : int
+        + PageSize : int
+    }
+
+    class GetReferralInboxQuery <<Query>> {
+        + ClinicianId : Guid
+        + Status : ReferralStatus?
+        + SortBy : string
+    }
+
+    class GetPatientTimelineQuery <<Query>> {
+        + PatientId : Guid
+        + ClinicianId : Guid
+    }
+}
+
+package "Commands" <<Rectangle>> {
+
+    class AcceptReferralCommand <<Command>> {
+        + ReferralId : Guid
+        + ClinicianId : Guid
+    }
+
+    class DeclineReferralCommand <<Command>> {
+        + ReferralId : Guid
+        + ClinicianId : Guid
+        + DeclineReason : string
+    }
+
+    class AddClinicalNoteCommand <<Command>> {
+        + PatientId : Guid
+        + AuthorId : Guid
+        + Content : string
+        + NoteType : ClinicalNoteType
+    }
+}
+
+package "Handlers" <<Rectangle>> {
+
+    class GetPatientListHandler <<Handler>> {
+        - _readDb : IReadDbContext
+        - _cache : IDistributedCache
+        --
+        + Handle(query) : PagedResult<PatientSummaryDto>
+    }
+
+    class AcceptReferralHandler <<Handler>> {
+        - _repository : IReferralCaseRepository
+        - _bus : IServiceBus
+        --
+        + Handle(command) : Result
+    }
+}
+
+GetPatientListQuery --> GetPatientListHandler
+GetReferralInboxQuery --> GetPatientListHandler
+AcceptReferralCommand --> AcceptReferralHandler
+DeclineReferralCommand --> AcceptReferralHandler
+AddClinicalNoteCommand --> AcceptReferralHandler
+
+@enduml

@@ -1,0 +1,73 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1
+skinparam maxMessageSize 180
+
+title Subscription Lifecycle - Plan Selection to Usage Metering
+
+actor "User" as user
+participant "Web App" as app
+participant "Billing API" as api
+participant "MediatR" as mediatr
+participant "Subscription\nRepository" as repo
+database "PostgreSQL" as db
+participant "Stripe API" as stripe
+participant "Azure\nService Bus" as bus
+participant "Usage\nMeter" as meter
+
+== Plan Selection & Checkout ==
+
+user -> app : Select "Pro" plan ($9.99/mo)
+app -> api : POST /api/subscriptions
+api -> mediatr : CreateSubscriptionCommand
+mediatr -> stripe : Create Checkout Session\n(priceId, customerId)
+stripe --> mediatr : CheckoutSession URL
+mediatr --> api : redirect URL
+api --> app : 303 Redirect to Stripe
+app -> stripe : Stripe Checkout page
+user -> stripe : Enter payment details
+stripe --> app : Redirect to success page
+
+== Stripe Webhook - Payment Confirmed ==
+
+stripe -> api : POST /webhooks/stripe\n(checkout.session.completed)
+activate api
+api -> mediatr : HandleStripeWebhookCommand
+mediatr -> repo : Create Subscription
+repo -> db : INSERT subscriptions\n(status=Active, plan=Pro)
+mediatr -> bus : SubscriptionCreated event
+deactivate api
+
+== Feature Gate Check ==
+
+app -> api : GET /api/features/full-diagnostics
+api -> mediatr : CheckFeatureAccessQuery
+mediatr -> db : SELECT plan tier\nfor user
+db --> mediatr : PlanTier=Pro
+mediatr --> api : { allowed: true }
+api --> app : 200 OK
+
+== Usage Metering ==
+
+bus -> meter : ScanCompleted event
+activate meter
+meter -> db : SELECT usage_meter\n(subscriptionId, feature=scans)
+meter -> meter : Increment(1)\ncurrentUsage: 5 / limit: 10
+meter -> db : UPDATE usage_meters
+alt Usage limit reached
+    meter -> bus : UsageLimitReached event
+end
+deactivate meter
+
+== Payment Failure ==
+
+stripe -> api : POST /webhooks/stripe\n(invoice.payment_failed)
+activate api
+api -> mediatr : HandleStripeWebhookCommand
+mediatr -> repo : subscription.MarkPastDue()
+repo -> db : UPDATE status=PastDue
+mediatr -> bus : PaymentFailed event
+note right of bus : Notification context\nsends dunning email
+deactivate api
+
+@enduml

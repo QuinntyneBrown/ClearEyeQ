@@ -1,0 +1,81 @@
+@startuml class-domain-model
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Environmental Context -- Domain Model
+
+package "Environmental Context Domain" {
+
+    class EnvironmentalSnapshot <<Aggregate Root>> {
+        +SnapshotId : Guid
+        +UserId : Guid
+        +Timestamp : DateTimeOffset
+        +Location : GeoLocation
+        +DataStaleness : StalenessLevel
+        +CreatedAt : DateTimeOffset
+        --
+        +AttachAirQuality(aqi) : void
+        +AttachPollen(pollen) : void
+        +AttachUV(uv) : void
+        +AttachHumidity(humidity) : void
+        +Finalize() : void
+    }
+
+    class GeoLocation <<Value Object>> {
+        +Latitude : double
+        +Longitude : double
+        +City : string
+        +Country : string
+    }
+
+    class AirQualityIndex <<Value Object>> {
+        +Value : int
+        +Category : string
+        +DominantPollutant : string
+        +Provider : string
+    }
+
+    class PollenCount <<Value Object>> {
+        +TreePollen : int
+        +GrassPollen : int
+        +WeedPollen : int
+        +RiskLevel : string
+    }
+
+    class UVIndex <<Value Object>> {
+        +Value : double
+        +RiskCategory : string
+    }
+
+    class Humidity <<Value Object>> {
+        +RelativePercent : double
+    }
+
+    class ScreenTimeRecord <<Entity>> {
+        +RecordId : Guid
+        +UserId : Guid
+        +Date : DateOnly
+        +TotalMinutes : int
+        +SessionCount : int
+        +Platform : string
+        +ReportedAt : DateTimeOffset
+    }
+
+    enum StalenessLevel {
+        Fresh
+        Stale
+        Unavailable
+    }
+}
+
+EnvironmentalSnapshot "1" *-- "1" GeoLocation
+EnvironmentalSnapshot "1" *-- "0..1" AirQualityIndex
+EnvironmentalSnapshot "1" *-- "0..1" PollenCount
+EnvironmentalSnapshot "1" *-- "0..1" UVIndex
+EnvironmentalSnapshot "1" *-- "0..1" Humidity
+EnvironmentalSnapshot --> StalenessLevel
+
+@enduml

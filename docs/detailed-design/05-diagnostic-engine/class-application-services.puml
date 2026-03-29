@@ -1,0 +1,85 @@
+@startuml class-application-services
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Diagnostic Engine -- Application Services
+
+package "Application Layer" {
+
+    class GenerateDiagnosisCommand <<Command>> {
+        +ScanId : Guid
+        +UserId : Guid
+        +TenantId : Guid
+    }
+
+    class GenerateDiagnosisHandler <<Handler>> {
+        -mlClient : IDiagnosticMLClient
+        -repository : IDiagnosticRepository
+        -medDb : IMedicationDatabase
+        -geneticProvider : IGeneticDataProvider
+        -bus : IEventPublisher
+        --
+        +Handle(command) : DiagnosticSessionId
+    }
+
+    class GetCausalGraphQuery <<Query>> {
+        +SessionId : Guid
+        +TenantId : Guid
+    }
+
+    class GetCausalGraphHandler <<Handler>> {
+        -repository : IDiagnosticRepository
+        --
+        +Handle(query) : CausalGraphDto
+    }
+
+    class CheckMedicationInteractionsQuery <<Query>> {
+        +UserId : Guid
+        +MedicationIds : List<string>
+    }
+
+    class CheckMedicationInteractionsHandler <<Handler>> {
+        -mlClient : IDiagnosticMLClient
+        -medDb : IMedicationDatabase
+        --
+        +Handle(query) : MedicationInteractionDto
+    }
+}
+
+package "Interfaces (Ports)" {
+
+    interface IDiagnosticMLClient {
+        +ClassifyConditions(features) : DiagnosticResult
+        +BuildCausalGraph(evidence) : CausalGraphResult
+        +GetSimilarCases(embedding, k) : SimilarCase[]
+    }
+
+    interface IMedicationDatabase {
+        +GetActiveMedications(userId) : Medication[]
+        +GetInteractionProfile(medIds) : InteractionProfile
+    }
+
+    interface IGeneticDataProvider {
+        +GetFamilyHistory(userId) : FamilyHistory
+        +GetGeneticMarkers(userId) : GeneticMarkerSet
+    }
+
+    interface IDiagnosticRepository {
+        +SaveSession(session) : void
+        +GetSession(sessionId, tenantId) : DiagnosticSession
+        +GetSessionsByScan(scanId) : DiagnosticSession[]
+    }
+}
+
+GenerateDiagnosisHandler ..> IDiagnosticMLClient
+GenerateDiagnosisHandler ..> IDiagnosticRepository
+GenerateDiagnosisHandler ..> IMedicationDatabase
+GenerateDiagnosisHandler ..> IGeneticDataProvider
+GetCausalGraphHandler ..> IDiagnosticRepository
+CheckMedicationInteractionsHandler ..> IDiagnosticMLClient
+CheckMedicationInteractionsHandler ..> IMedicationDatabase
+
+@enduml

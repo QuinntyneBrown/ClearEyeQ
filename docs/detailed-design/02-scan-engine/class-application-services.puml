@@ -1,0 +1,87 @@
+@startuml class-application-services
+title Scan Engine — Application Services
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Commands" {
+    class InitiateScanCommand <<Command>> {
+        +UserId : Guid
+        +EyeSide : EyeSide
+        +DeviceModel : string
+        +CameraResolution : string
+    }
+
+    class ProcessScanCommand <<Command>> {
+        +ScanId : Guid
+        +AmbientLux : double
+        +ColorTemperatureK : int
+        +FrameCount : int
+        +BurstDurationMs : int
+    }
+}
+
+package "Queries" {
+    class GetScanResultQuery <<Query>> {
+        +ScanId : Guid
+        +UserId : Guid
+    }
+
+    class CompareScanQuery <<Query>> {
+        +CurrentScanId : Guid
+        +BaselineScanId : Guid?
+        +UserId : Guid
+    }
+}
+
+package "Handlers" {
+    class InitiateScanHandler <<Handler>> {
+        +Handle(command) : ScanId
+    }
+
+    class ProcessScanHandler <<Handler>> {
+        +Handle(command) : void
+    }
+
+    class GetScanResultHandler <<Handler>> {
+        +Handle(query) : ScanResultDto
+    }
+
+    class CompareScanHandler <<Handler>> {
+        +Handle(query) : ScanComparisonDto
+    }
+}
+
+package "Interfaces" {
+    interface IScanRepository {
+        +GetByIdAsync(id) : Scan?
+        +GetLatestByUserAsync(userId, eyeSide) : Scan?
+        +AddAsync(scan) : void
+        +UpdateAsync(scan) : void
+    }
+
+    interface IImageStore {
+        +UploadAsync(scanId, frameIndex, stream) : Uri
+        +GetUriAsync(scanId, frameIndex) : Uri
+        +DeleteScanImagesAsync(scanId) : void
+    }
+
+    interface IMLInferenceClient {
+        +AnalyzeScanAsync(request) : ScanAnalysisResult
+        +GetPositioningFeedbackAsync(frame) : PositioningResult
+    }
+
+    interface IScanComparer {
+        +Compare(current, baseline) : ScanComparison
+    }
+}
+
+InitiateScanHandler --> IScanRepository
+ProcessScanHandler --> IScanRepository
+ProcessScanHandler --> IImageStore
+ProcessScanHandler --> IMLInferenceClient
+CompareScanHandler --> IScanRepository
+CompareScanHandler --> IScanComparer
+GetScanResultHandler --> IScanRepository
+
+@enduml

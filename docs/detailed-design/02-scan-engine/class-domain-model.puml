@@ -1,0 +1,101 @@
+@startuml class-domain-model
+title Scan Engine — Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Scan Engine Domain" {
+
+    class Scan <<AggregateRoot>> {
+        +Id : ScanId
+        +UserId : UserId
+        +EyeSide : EyeSide
+        +CaptureMetadata : CaptureMetadata
+        +AmbientLight : AmbientLightReading
+        +RednessScore : RednessScore
+        +TearFilm : TearFilmMetrics
+        +Status : ScanStatus
+        +Audit : AuditMetadata
+        +Initiate() : void
+        +AttachImage(image) : void
+        +RecordResults(redness, tearFilm) : void
+        +MarkFailed(reason) : void
+    }
+
+    class ScanImage <<Entity>> {
+        +Id : Guid
+        +ScanId : ScanId
+        +FrameIndex : int
+        +BlobUri : Uri
+        +QualityScore : double
+        +IsSelected : bool
+        +CapturedAt : DateTimeOffset
+    }
+
+    class CaptureMetadata <<ValueObject>> {
+        +DeviceModel : string
+        +CameraResolution : string
+        +FrameCount : int
+        +BurstDurationMs : int
+        +FocalLength : double
+    }
+
+    class AmbientLightReading <<ValueObject>> {
+        +Lux : double
+        +ColorTemperatureK : int
+        +RecordedAt : DateTimeOffset
+    }
+
+    class RednessScore <<ValueObject>> {
+        +Overall : int {0..100}
+        +Confidence : ConfidenceScore
+        +ZoneBreakdown : Dictionary<string, int>
+    }
+
+    class TearFilmMetrics <<ValueObject>> {
+        +BreakUpTimeSec : double
+        +LipidLayerGrade : int {1..4}
+        +CoveragePercent : double
+        +Confidence : ConfidenceScore
+    }
+
+    class ScanComparison <<ValueObject>> {
+        +BaselineScanId : ScanId
+        +CurrentScanId : ScanId
+        +RednessDelta : int
+        +TearFilmDelta : double
+        +DaysBetween : int
+        +Trend : TrendDirection
+    }
+
+    class PositioningFeedback <<ValueObject>> {
+        +AlignmentScore : double {0.0..1.0}
+        +HorizontalOffset : double
+        +VerticalOffset : double
+        +DirectionHint : string
+        +IsReady : bool
+    }
+
+    enum ScanStatus {
+        Initiated
+        Capturing
+        Processing
+        Completed
+        Failed
+    }
+
+    enum TrendDirection {
+        Improving
+        Stable
+        Worsening
+    }
+}
+
+Scan "1" *-- "1..*" ScanImage
+Scan *-- CaptureMetadata
+Scan *-- AmbientLightReading
+Scan *-- RednessScore
+Scan *-- TearFilmMetrics
+Scan --> ScanStatus
+
+@enduml

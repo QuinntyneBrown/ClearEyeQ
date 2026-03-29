@@ -1,0 +1,60 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Notifications and Alerts - Infrastructure Adapters
+
+interface IChannelSender {
+    + SendAsync(notification, formattedMessage) : Task<DeliveryAttempt>
+    + Channel : NotificationChannel
+}
+
+class FirebasePushSender <<Infrastructure>> {
+    - _firebaseClient : FirebaseMessaging
+    --
+    + Channel : NotificationChannel = Push
+    + SendAsync(notification, message) : Task<DeliveryAttempt>
+    - BuildFcmMessage(message) : Message
+}
+
+class SignalRInAppSender <<Infrastructure>> {
+    - _hubContext : IHubContext<NotificationHub>
+    --
+    + Channel : NotificationChannel = InApp
+    + SendAsync(notification, message) : Task<DeliveryAttempt>
+    - GetConnectionId(userId) : string?
+}
+
+class SendGridEmailSender <<Infrastructure>> {
+    - _sendGridClient : ISendGridClient
+    - _fromAddress : EmailAddress
+    --
+    + Channel : NotificationChannel = Email
+    + SendAsync(notification, message) : Task<DeliveryAttempt>
+    - BuildSendGridMessage(message) : SendGridMessage
+}
+
+class TwilioSmsSender <<Infrastructure>> {
+    - _twilioClient : ITwilioRestClient
+    - _fromNumber : string
+    --
+    + Channel : NotificationChannel = SMS
+    + SendAsync(notification, message) : Task<DeliveryAttempt>
+    - FormatSmsBody(message) : string
+}
+
+class ChannelDispatcher <<Infrastructure>> {
+    - _senders : Dictionary<NotificationChannel, IChannelSender>
+    --
+    + DispatchAsync(channel, notification, message) : Task<DeliveryAttempt>
+    + DispatchAllAsync(channels, notification, messages) : Task<List<DeliveryAttempt>>
+}
+
+FirebasePushSender ..|> IChannelSender
+SignalRInAppSender ..|> IChannelSender
+SendGridEmailSender ..|> IChannelSender
+TwilioSmsSender ..|> IChannelSender
+ChannelDispatcher o-- IChannelSender : routes to >
+
+@enduml

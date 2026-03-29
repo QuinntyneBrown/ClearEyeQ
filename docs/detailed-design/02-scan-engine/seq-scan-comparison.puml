@@ -1,0 +1,42 @@
+@startuml seq-scan-comparison
+title Scan Engine — Scan Comparison Flow
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+actor "Mobile App" as App
+participant "API Gateway" as GW
+participant "ScanController" as API
+participant "MediatR" as Med
+participant "IScanRepository" as Repo
+participant "IScanComparer" as Comparer
+
+App -> GW : GET /scans/{id}/compare?baselineId={id}
+GW -> API : CompareScan(currentId, baselineId)
+API -> Med : CompareScanQuery
+
+Med -> Repo : GetByIdAsync(currentScanId)
+Repo --> Med : currentScan
+
+alt baselineId provided
+    Med -> Repo : GetByIdAsync(baselineScanId)
+else no baselineId
+    Med -> Repo : GetLatestByUserAsync(userId, eyeSide)
+end
+Repo --> Med : baselineScan
+
+Med -> Comparer : Compare(currentScan, baselineScan)
+note right of Comparer
+  Computes:
+  - RednessDelta (current - baseline)
+  - TearFilmDelta
+  - DaysBetween
+  - Trend direction
+end note
+Comparer --> Med : ScanComparison
+
+Med --> API : ScanComparisonDto
+API --> GW : 200 JSON
+GW --> App : ComparisonResult
+
+@enduml

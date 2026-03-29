@@ -1,0 +1,92 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Clinical Portal - Domain Model
+
+package "Clinical Portal Domain" {
+
+    class ClinicalUser <<Entity>> {
+        + UserId : Guid
+        + FullName : string
+        + Specialty : string
+        + LicenseNumber : string
+        + IsActive : bool
+    }
+
+    class PatientAssignment <<Aggregate Root>> {
+        + AssignmentId : Guid
+        + ClinicalUserId : Guid
+        + PatientId : Guid
+        + AssignedAt : DateTimeOffset
+        + Status : AssignmentStatus
+        --
+        + Reassign(newClinicianId) : void
+        + Deactivate() : void
+    }
+
+    class ReferralCase <<Aggregate Root>> {
+        + ReferralId : Guid
+        + PatientId : Guid
+        + AssignedClinicianId : Guid?
+        + EscalationReason : string
+        + Urgency : UrgencyLevel
+        + Status : ReferralStatus
+        + CreatedAt : DateTimeOffset
+        --
+        + Accept(clinicianId) : void
+        + Decline(clinicianId, reason) : void
+    }
+
+    class ClinicalNote <<Aggregate Root>> {
+        + NoteId : Guid
+        + PatientId : Guid
+        + AuthorId : Guid
+        + Content : string
+        + NoteType : ClinicalNoteType
+        + CreatedAt : DateTimeOffset
+        --
+        + Amend(content) : void
+    }
+
+    class PatientSummaryReadModel <<Read Model>> {
+        + PatientId : Guid
+        + FullName : string
+        + LastScanDate : DateTimeOffset?
+        + LatestDiagnosis : string?
+        + RiskLevel : string?
+    }
+
+    class ScanResultReadModel <<Read Model>> {
+        + ScanId : Guid
+        + PatientId : Guid
+        + ScanType : string
+        + CapturedAt : DateTimeOffset
+        + QualityScore : decimal
+    }
+
+    class DiagnosticReadModel <<Read Model>> {
+        + DiagnosticId : Guid
+        + PatientId : Guid
+        + Condition : string
+        + Confidence : decimal
+        + GeneratedAt : DateTimeOffset
+    }
+
+    class TreatmentPlanReadModel <<Read Model>> {
+        + TreatmentPlanId : Guid
+        + PatientId : Guid
+        + PlanSummary : string
+        + Status : string
+        + CreatedAt : DateTimeOffset
+    }
+}
+
+ClinicalUser "1" -- "*" PatientAssignment : manages >
+ClinicalUser "1" -- "*" ReferralCase : reviews >
+ClinicalUser "1" -- "*" ClinicalNote : authors >
+PatientSummaryReadModel .. ScanResultReadModel : references
+PatientSummaryReadModel .. DiagnosticReadModel : references
+
+@enduml

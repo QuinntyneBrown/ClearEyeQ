@@ -1,0 +1,76 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1
+skinparam maxMessageSize 180
+
+title FHIR Data Export Flow - Patient Right of Access
+
+actor "Patient" as patient
+participant "Web App" as app
+participant "FHIR API" as api
+participant "MediatR" as mediatr
+participant "Scan\nRead Service" as scan
+participant "Diagnostic\nRead Service" as diag
+participant "Treatment\nRead Service" as treat
+participant "FHIR Mappers" as mappers
+participant "FHIR\nValidator" as validator
+participant "Azure Blob\nStorage" as blob
+database "PostgreSQL" as db
+
+== Patient Requests Data Export ==
+
+patient -> app : Request "Export My Data"
+app -> api : POST /api/fhir/export
+api -> mediatr : ExportPatientDataCommand
+mediatr -> db : INSERT export_jobs\n(status=InProgress)
+mediatr --> api : 202 Accepted\n(jobId)
+api --> app : Export job started
+
+== Gather Data from All Contexts ==
+
+mediatr -> scan : GetScansByPatient(patientId)
+scan --> mediatr : List<ScanResult>
+
+mediatr -> diag : GetDiagnosticsByPatient(patientId)
+diag --> mediatr : List<DiagnosticResult>
+
+mediatr -> treat : GetTreatmentPlans(patientId)
+treat --> mediatr : List<TreatmentPlan>
+
+== Map to FHIR Resources ==
+
+mediatr -> mappers : MapToPatient(profile)
+mappers --> mediatr : FHIR Patient
+
+mediatr -> mappers : MapToObservations(scans)
+mappers --> mediatr : List<FHIR Observation>
+
+mediatr -> mappers : MapToDiagnosticReports(diagnostics)
+mappers --> mediatr : List<FHIR DiagnosticReport>
+
+mediatr -> mappers : MapToMedicationRequests(plans)
+mappers --> mediatr : List<FHIR MedicationRequest>
+
+== Validate & Package ==
+
+mediatr -> validator : Validate(bundle)
+validator --> mediatr : ValidationResult (pass)
+
+mediatr -> mappers : CreateBundle(allResources)
+mappers --> mediatr : FHIR Bundle (JSON)
+
+== Store & Deliver ==
+
+mediatr -> blob : Upload bundle.json\n(encrypted, time-limited SAS)
+blob --> mediatr : Blob URL (SAS token)
+
+mediatr -> db : UPDATE export_jobs\n(status=Completed, bundleUrl)
+
+patient -> app : Check export status
+app -> api : GET /api/fhir/export/{jobId}
+api -> db : SELECT export_job
+db --> api : ExportJob (completed)
+api --> app : 200 OK (downloadUrl)
+app --> patient : Download FHIR Bundle
+
+@enduml

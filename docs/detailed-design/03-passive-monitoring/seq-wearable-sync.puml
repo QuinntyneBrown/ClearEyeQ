@@ -1,0 +1,62 @@
+@startuml seq-wearable-sync
+title Wearable Data Sync — Sequence Diagram
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+actor "Patient" as User
+participant "Mobile App\n(React Native)" as App
+participant "HealthKit /\nGoogle Fit SDK" as HealthSDK
+participant "Wearable API\n(Oura / Whoop)" as WearableAPI
+participant "Normalizer\n(on-device)" as Normalizer
+participant "API Gateway\n(.NET YARP)" as Gateway
+participant "Monitoring API\n(.NET 9)" as API
+participant "Cosmos DB" as Cosmos
+participant "Azure\nService Bus" as Bus
+
+User -> App : Opens app / background sync triggers
+activate App
+
+App -> HealthSDK : Query new data since last sync
+activate HealthSDK
+HealthSDK --> App : Raw HR, HRV, SpO2, sleep stages
+deactivate HealthSDK
+
+App -> WearableAPI : GET /v1/sleep, /v1/heart-rate
+activate WearableAPI
+WearableAPI --> App : Raw JSON payloads
+deactivate WearableAPI
+
+App -> Normalizer : Normalize & deduplicate
+activate Normalizer
+Normalizer --> App : List<WearableDataPointDto>
+deactivate Normalizer
+
+App -> Gateway : POST /api/monitoring/wearable-sync\n[Bearer token + normalized payload]
+activate Gateway
+Gateway -> API : Route + validate JWT
+activate API
+
+API -> API : MediatR: SyncMonitoringDataHandler
+API -> API : Create/update MonitoringSession aggregate
+API -> API : EvaluateThresholds() — generate PassiveAlerts
+
+API -> Cosmos : Upsert MonitoringSession
+activate Cosmos
+Cosmos --> API : 200 OK
+deactivate Cosmos
+
+API -> Bus : Publish MonitoringDataReceived event
+activate Bus
+Bus --> API : Accepted
+deactivate Bus
+
+API --> Gateway : 200 OK
+deactivate API
+Gateway --> App : 200 OK
+deactivate Gateway
+
+App --> User : Sync complete indicator
+deactivate App
+
+@enduml

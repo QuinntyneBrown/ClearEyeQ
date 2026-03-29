@@ -1,0 +1,61 @@
+@startuml seq-causal-graph
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title Diagnostic Engine -- Causal Graph Construction
+
+participant "GenerateDiagnosis\nHandler" as Orchestrator
+participant "Monitoring\nData" as MonData
+participant "Environmental\nData" as EnvData
+participant "Medication\nData" as MedData
+participant "Genetic\nData" as GenData
+participant "Factor\nAggregator" as Aggregator
+participant "CausalInference\nEngine (Python)" as Bayesian
+participant "Diagnostic\nRepository" as Repo
+
+Orchestrator -> Aggregator : AggregateCausalFactors(context)
+activate Aggregator
+
+par Collect Factor Evidence
+    Aggregator -> MonData : Extract sleep, blink-rate,\nscreen-time factors
+    MonData --> Aggregator : behavioral + sleep factors
+    Aggregator -> EnvData : Extract AQI, pollen,\nUV, humidity factors
+    EnvData --> Aggregator : environmental factors
+    Aggregator -> MedData : Extract medication\nside-effect factors
+    MedData --> Aggregator : medication factors
+    Aggregator -> GenData : Extract hereditary\nrisk factors
+    GenData --> Aggregator : genetic factors
+end
+
+note over Aggregator : Merge all factors into\nevidence dictionary with\nobserved states
+
+Aggregator --> Orchestrator : evidence dict\n(~15-30 observed variables)
+deactivate Aggregator
+
+Orchestrator -> Bayesian : infer_causes(evidence)
+activate Bayesian
+
+note over Bayesian : Load Bayesian network DAG\n(~120 nodes)
+
+note over Bayesian : Run belief propagation\nto compute posterior\nprobabilities per factor
+
+Bayesian --> Orchestrator : list[CausalPosterior]\nper-factor probabilities
+deactivate Bayesian
+
+Orchestrator -> Bayesian : compute_edge_weights(evidence)
+activate Bayesian
+
+note over Bayesian : Compute conditional\nmutual information\nfor each edge
+
+Bayesian --> Orchestrator : list[WeightedEdge]\nsource, target, weight
+deactivate Bayesian
+
+note over Orchestrator : Assemble CausalGraph entity:\n- CausalFactor nodes with types\n- CausalRelation edges with weights\n- Identify root causes\n  (highest posterior, no parents)
+
+Orchestrator -> Repo : Persist CausalGraph\nwithin DiagnosticSession
+activate Repo
+Repo --> Orchestrator : saved
+deactivate Repo
+
+@enduml

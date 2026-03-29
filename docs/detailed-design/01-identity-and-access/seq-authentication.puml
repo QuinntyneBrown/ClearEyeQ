@@ -1,0 +1,68 @@
+@startuml seq-authentication
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title User Authentication Flow
+
+actor "Mobile App" as Mobile
+participant "API Gateway" as Gateway
+participant "IdentityController" as Controller
+participant "MediatR" as MediatR
+participant "AuthenticateHandler" as Handler
+participant "IUserRepository\n(Cosmos)" as Repo
+participant "PasswordVerifier" as PwVerify
+participant "ITokenProvider" as Token
+participant "IAuditLogger" as Audit
+
+Mobile -> Gateway : POST /api/identity/authenticate\n{email, password, mfaCode?}
+Gateway -> Controller : Forward (TLS 1.3)
+
+Controller -> MediatR : Send(AuthenticateCommand)
+MediatR -> Handler : Handle(command)
+
+Handler -> Repo : GetByEmailAsync(email)
+alt User not found
+    Handler -> Audit : LogAsync(FailedLogin)
+    Handler --> Controller : 401 Unauthorized
+    Controller --> Mobile : 401 Unauthorized
+end
+
+Handler -> Handler : Check AccountStatus
+alt Account suspended / locked
+    Handler -> Audit : LogAsync(BlockedLogin)
+    Handler --> Controller : 403 Forbidden
+    Controller --> Mobile : 403 Forbidden
+end
+
+Handler -> PwVerify : Verify(password, user.PasswordHash)
+alt Password invalid
+    Handler -> Handler : Increment failed attempts
+    Handler -> Repo : SaveAsync(user)
+    Handler -> Audit : LogAsync(FailedLogin)
+    Handler --> Controller : 401 Unauthorized
+    Controller --> Mobile : 401 Unauthorized
+end
+
+alt MFA enabled
+    Handler -> Handler : Validate TOTP code
+    alt MFA code invalid / missing
+        Handler -> Audit : LogAsync(MfaChallenge)
+        Handler --> Controller : MFA required
+        Controller --> Mobile : 202 MFA Required
+    end
+end
+
+Handler -> Token : GenerateAccessToken(user)
+Token --> Handler : JWT access token
+Handler -> Token : GenerateRefreshToken(user)
+Token --> Handler : Refresh token
+
+Handler -> Audit : LogAsync(SuccessfulLogin)
+
+Handler --> MediatR : AuthResult
+MediatR --> Controller : AuthResult
+Controller --> Gateway : 200 OK\n{accessToken, refreshToken, expiresIn}
+Gateway --> Mobile : 200 OK
+
+@enduml

@@ -1,0 +1,70 @@
+@startuml class-application-services
+title Treatment Orchestration — Application Services
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Command Handlers" {
+
+    class CreateTreatmentPlanHandler <<Handler>> {
+        +Handle(command) : PlanId
+    }
+
+    class AdjustDoseHandler <<Handler>> {
+        +Handle(command) : void
+    }
+
+    class TrackEfficacyHandler <<Handler>> {
+        +Handle(command) : EfficacyMeasurement
+    }
+
+    class EvaluateEscalationHandler <<Handler>> {
+        +Handle(command) : EscalationDecision
+    }
+
+    class VerifyResolutionHandler <<Handler>> {
+        +Handle(command) : ResolutionResult
+    }
+}
+
+package "Ports" {
+
+    interface ITreatmentRepository <<Repository>> {
+        +GetByIdAsync(planId) : TreatmentPlan
+        +SaveAsync(plan) : void
+        +GetByUserIdAsync(userId) : List<TreatmentPlan>
+    }
+
+    interface IEfficacyCalculator <<Service>> {
+        +CalculateScore(baseline, current) : double
+        +CalculateTrajectory(measurements) : Trajectory
+    }
+
+    interface IPharmacyClient <<AntiCorruptionLayer>> {
+        +QueryFormulationsAsync(criteria) : List<Formulation>
+        +SubmitOrderAsync(order) : OrderConfirmation
+    }
+
+    interface IDomainEventPublisher <<Port>> {
+        +PublishAsync(event) : void
+    }
+}
+
+CreateTreatmentPlanHandler --> ITreatmentRepository
+CreateTreatmentPlanHandler --> IPharmacyClient
+CreateTreatmentPlanHandler --> IDomainEventPublisher
+
+AdjustDoseHandler --> ITreatmentRepository
+AdjustDoseHandler --> IEfficacyCalculator
+AdjustDoseHandler --> IDomainEventPublisher
+
+TrackEfficacyHandler --> ITreatmentRepository
+TrackEfficacyHandler --> IEfficacyCalculator
+
+EvaluateEscalationHandler --> ITreatmentRepository
+EvaluateEscalationHandler --> IDomainEventPublisher
+
+VerifyResolutionHandler --> ITreatmentRepository
+VerifyResolutionHandler --> IEfficacyCalculator
+
+@enduml

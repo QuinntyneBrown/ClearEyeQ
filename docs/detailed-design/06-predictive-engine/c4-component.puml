@@ -1,0 +1,49 @@
+@startuml c4-component
+!include <C4/C4_Component>
+
+title Predictive Engine -- Component Diagram (C4 Level 3)
+
+Container_Boundary(predictive, "Predictive Engine") {
+
+    Component(api, "Predictive API", ".NET 9 / ASP.NET Core", "REST endpoints for forecast,\nflare-up, and trajectory requests")
+
+    Component(handlers, "CQRS Handlers", ".NET 9 / MediatR", "GenerateForecast, DetectFlareUpRisk,\nModelTrajectory handlers")
+
+    Component(hub, "SignalR Hub", ".NET 9 / SignalR", "Real-time forecast push\nto connected clients")
+
+    Component(consumer, "Event Consumers", ".NET 9", "Service Bus subscribers for\nScanCompleted, MonitoringData,\nEnvironmentalSnapshot events")
+
+    Component(grpc_client, "ML gRPC Client", ".NET 9 / Grpc.Net", "Typed client proxying requests\nto Python ML workers")
+
+    Component(forecaster, "TimeSeriesForecaster", "Python / PyTorch", "Temporal Fusion Transformer\n72-hour multi-horizon forecast")
+
+    Component(flareup, "FlareUpDetector", "Python / LightGBM", "Near-real-time flare-up\nprobability scoring + SHAP")
+
+    Component(trajectory, "TrajectoryRegressor", "Python / scikit-learn", "Bayesian ridge regression\n6-12 month projection")
+
+    Component(similarity, "PatientSimilaritySearch", "Python / pgvector", "Autoencoder embeddings +\nk-NN retrieval")
+}
+
+ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Prediction aggregates")
+ContainerDb(pg, "PostgreSQL + pgvector", "PostgreSQL", "Patient embeddings,\nhistorical features")
+ContainerDb(redis, "Redis", "Azure Redis", "Forecast cache\n(TTL = 1 hour)")
+Container(bus, "Service Bus", "Azure Service Bus", "Domain events")
+
+Rel(api, handlers, "Dispatches commands/queries")
+Rel(consumer, handlers, "Dispatches commands")
+Rel(handlers, grpc_client, "Inference requests")
+Rel(grpc_client, forecaster, "gRPC", "ForecastRequest")
+Rel(grpc_client, flareup, "gRPC", "RiskEvalRequest")
+Rel(grpc_client, trajectory, "gRPC", "TrajectoryRequest")
+Rel(forecaster, similarity, "Calibration query")
+Rel(trajectory, similarity, "Calibration query")
+Rel(similarity, pg, "Vector search", "SQL")
+Rel(handlers, cosmos, "Read/Write", "SDK")
+Rel(handlers, redis, "Cache R/W", "StackExchange.Redis")
+Rel(handlers, bus, "Publish events", "AMQP")
+Rel(bus, consumer, "Subscriptions", "AMQP")
+Rel(handlers, hub, "Push forecasts")
+
+LAYOUT_WITH_LEGEND()
+
+@enduml

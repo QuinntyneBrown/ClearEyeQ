@@ -1,0 +1,51 @@
+@startuml seq-treatment-generation
+title Treatment Plan Generation Flow
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+participant "Service Bus" as Bus
+participant "DiagnosisCompleted\nConsumer" as Consumer
+participant "MediatR" as MediatR
+participant "CreateTreatmentPlan\nHandler" as Handler
+participant "ProtocolSelector" as Selector
+participant "IPharmacyClient" as Pharmacy
+participant "ITreatmentRepository\n(Cosmos)" as Repo
+participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+
+Bus -> Consumer : DiagnosisCompleted event\n{diagnosisId, userId, severity}
+Consumer -> MediatR : Send(CreateTreatmentPlanCommand)
+MediatR -> Handler : Handle(command)
+
+Handler -> Handler : Load patient history\nand contraindications
+
+Handler -> Selector : SelectProtocol(severity, history)
+Selector --> Handler : ProtocolTemplate
+
+Handler -> Handler : Personalize dosing\n(weight, age, severity)
+
+Handler -> Pharmacy : QueryFormulationsAsync(criteria)
+Pharmacy --> Handler : Available formulations
+
+Handler -> Handler : Build TreatmentPlan aggregate\nwith Phases and Interventions
+
+Handler -> Handler : Schedule behavioral\ninterventions (screen breaks,\nhydration, sleep hygiene)
+
+Handler -> Repo : SaveAsync(treatmentPlan)
+Repo --> Handler : Success
+
+Handler -> Publisher : PublishAsync(TreatmentPlanCreated)
+Publisher --> Handler : Acknowledged
+
+note right of Publisher
+    Downstream subscribers:
+    - Notifications (patient alert)
+    - Clinical Portal (clinician view)
+    - FHIR Interoperability
+end note
+
+Handler --> MediatR : PlanId
+MediatR --> Consumer : PlanId
+Consumer --> Bus : Message completed
+
+@enduml

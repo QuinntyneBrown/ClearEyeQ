@@ -1,0 +1,80 @@
+@startuml class-ml-models
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Diagnostic Engine -- Python ML Models
+
+package "Python ML Services" {
+
+    class DiagnosticClassifier {
+        -model : torch.nn.Module
+        -label_map : dict[int, str]
+        -temperature : float
+        --
+        +classify(features: FeatureVector) : list[DiagnosisPrediction]
+        +calibrate_confidence(logits: Tensor) : list[float]
+        +load_model(path: str) : void
+        +get_model_version() : str
+    }
+
+    class CausalInferenceEngine {
+        -bayesian_net : pgmpy.BayesianNetwork
+        -structure : DAG
+        --
+        +infer_causes(evidence: dict) : list[CausalPosterior]
+        +compute_edge_weights(evidence: dict) : list[WeightedEdge]
+        +build_graph(posteriors, edges) : CausalGraphDTO
+        +update_priors(new_data: DataFrame) : void
+    }
+
+    class MedicationInteractionChecker {
+        -rxnorm_client : RxNormClient
+        -interaction_rules : RuleEngine
+        --
+        +check_interactions(medications: list[str]) : list[InteractionWarning]
+        +get_ocular_side_effects(med_id: str) : list[SideEffect]
+        +score_risk(interactions: list) : float
+    }
+
+    class GeneticRiskScorer {
+        -models : dict[str, LogisticRegression]
+        -baseline_rates : dict[str, float]
+        --
+        +score_risk(family_history: dict, markers: list[str]) : list[GeneticRisk]
+        +get_risk_multiplier(condition: str, features: dict) : float
+    }
+
+    class PatientEmbeddingService {
+        -encoder : torch.nn.Module
+        -pg_pool : asyncpg.Pool
+        -embedding_dim : int = 512
+        --
+        +generate_embedding(patient_data: dict) : ndarray
+        +find_similar_cases(embedding: ndarray, k: int) : list[SimilarCase]
+        +store_embedding(patient_id: str, embedding: ndarray) : void
+    }
+
+    class MLServiceFacade <<gRPC Service>> {
+        -classifier : DiagnosticClassifier
+        -causal_engine : CausalInferenceEngine
+        -med_checker : MedicationInteractionChecker
+        -genetic_scorer : GeneticRiskScorer
+        -embedding_svc : PatientEmbeddingService
+        --
+        +RunDiagnosticPipeline(request) : DiagnosticResult
+        +BuildCausalGraph(request) : CausalGraphResponse
+        +CheckMedications(request) : MedicationResponse
+        +GetSimilarCases(request) : SimilarCasesResponse
+    }
+}
+
+MLServiceFacade --> DiagnosticClassifier
+MLServiceFacade --> CausalInferenceEngine
+MLServiceFacade --> MedicationInteractionChecker
+MLServiceFacade --> GeneticRiskScorer
+MLServiceFacade --> PatientEmbeddingService
+
+@enduml

@@ -1,0 +1,70 @@
+@startuml class-application-services
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Predictive Engine -- Application Services
+
+package "Application Layer" {
+
+    package "Commands & Queries" {
+        class GenerateForecastCommand <<IRequest>> {
+            +UserId : Guid
+            +TriggerSource : string
+        }
+
+        class DetectFlareUpRiskCommand <<IRequest>> {
+            +UserId : Guid
+            +EventType : string
+            +EventPayload : byte[]
+        }
+
+        class ModelTrajectoryQuery <<IRequest>> {
+            +UserId : Guid
+            +HorizonMonths : int
+            +IncludeTreatmentScenario : bool
+        }
+    }
+
+    package "Handlers" {
+        class GenerateForecastHandler <<IRequestHandler>>
+        class DetectFlareUpRiskHandler <<IRequestHandler>>
+        class ModelTrajectoryHandler <<IRequestHandler>>
+    }
+}
+
+package "Application Interfaces" {
+    interface IPredictiveMLClient {
+        +ForecastAsync(features) : ForecastResult
+        +EvaluateFlareUpRiskAsync(features) : RiskResult
+        +ProjectTrajectoryAsync(history) : TrajectoryResult
+    }
+
+    interface IPatientHistoryRepository {
+        +GetFeatureWindowAsync(userId, days) : FeatureMatrix
+        +GetLongTermHistoryAsync(userId) : HistorySeries
+        +SavePredictionAsync(prediction) : void
+    }
+
+    interface IForecastCache {
+        +GetAsync(userId) : CachedForecast?
+        +SetAsync(userId, forecast, ttl) : void
+        +InvalidateAsync(userId) : void
+    }
+}
+
+GenerateForecastHandler --> IPredictiveMLClient
+GenerateForecastHandler --> IPatientHistoryRepository
+GenerateForecastHandler --> IForecastCache
+DetectFlareUpRiskHandler --> IPredictiveMLClient
+DetectFlareUpRiskHandler --> IPatientHistoryRepository
+ModelTrajectoryHandler --> IPredictiveMLClient
+ModelTrajectoryHandler --> IPatientHistoryRepository
+
+GenerateForecastHandler .left.> GenerateForecastCommand : handles
+DetectFlareUpRiskHandler .left.> DetectFlareUpRiskCommand : handles
+ModelTrajectoryHandler .left.> ModelTrajectoryQuery : handles
+
+@enduml

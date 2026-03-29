@@ -1,0 +1,58 @@
+@startuml class-ml-models
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Predictive Engine -- Python ML Models
+
+package "Python ML Workers" {
+
+    class TimeSeriesForecaster {
+        -model : TemporalFusionTransformer
+        -feature_window_days : int = 30
+        -horizon_hours : int = 72
+        --
+        +forecast(feature_matrix) : ForecastResult
+        +get_attention_weights() : dict
+        -_preprocess(raw_features) : Tensor
+        -_postprocess(output) : ForecastResult
+    }
+
+    class FlareUpDetector {
+        -model : LightGBMClassifier
+        -threshold : float = 0.65
+        -explainer : SHAPExplainer
+        --
+        +evaluate_risk(feature_vector) : RiskResult
+        +explain(feature_vector) : FactorAttribution[]
+        -_extract_48h_window(features) : ndarray
+    }
+
+    class TrajectoryRegressor {
+        -model : BayesianRidge
+        -min_history_days : int = 90
+        --
+        +project(history, horizon_months) : TrajectoryResult
+        +project_with_treatment(history, plan) : TrajectoryResult
+        -_fit_trend(scores) : CurveParams
+    }
+
+    class PatientSimilaritySearch {
+        -encoder : AutoEncoder
+        -pg_pool : ConnectionPool
+        -embedding_dim : int = 256
+        -k_neighbors : int = 10
+        --
+        +encode_profile(patient_data) : ndarray
+        +find_similar(embedding, k) : SimilarPatient[]
+        +update_embedding(user_id, data) : void
+    }
+}
+
+TimeSeriesForecaster ..> PatientSimilaritySearch : calibrates with
+TrajectoryRegressor ..> PatientSimilaritySearch : calibrates with
+FlareUpDetector ..> TimeSeriesForecaster : consumes forecast context
+
+@enduml

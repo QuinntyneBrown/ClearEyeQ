@@ -1,0 +1,91 @@
+@startuml class-application-services
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Identity & Access -- Application Services
+
+package "Application Layer" {
+
+    package "Commands" {
+        class RegisterUserCommand <<IRequest>> {
+            +Email : string
+            +Password : string
+            +TenantName : string
+        }
+
+        class AuthenticateCommand <<IRequest>> {
+            +Email : string
+            +Password : string
+            +MfaCode : string?
+        }
+
+        class RefreshTokenCommand <<IRequest>> {
+            +RefreshToken : string
+            +DeviceFingerprint : string
+        }
+
+        class GrantConsentCommand <<IRequest>> {
+            +UserId : Guid
+            +ConsentType : string
+        }
+
+        class RevokeConsentCommand <<IRequest>> {
+            +UserId : Guid
+            +ConsentType : string
+        }
+    }
+
+    package "Handlers" {
+        class RegisterUserHandler <<IRequestHandler>>
+        class AuthenticateHandler <<IRequestHandler>>
+        class RefreshTokenHandler <<IRequestHandler>>
+        class GrantConsentHandler <<IRequestHandler>>
+        class RevokeConsentHandler <<IRequestHandler>>
+    }
+}
+
+package "Application Interfaces" {
+    interface IUserRepository {
+        +GetByEmailAsync(email) : User?
+        +GetByIdAsync(id) : User?
+        +SaveAsync(user) : void
+    }
+
+    interface IAuditLogger {
+        +LogAsync(entry) : void
+    }
+
+    interface IConsentService {
+        +GrantAsync(userId, type) : void
+        +RevokeAsync(userId, type) : void
+    }
+
+    interface ITokenProvider {
+        +GenerateAccessToken(user) : string
+        +GenerateRefreshToken(user) : string
+        +ValidateRefreshToken(token) : bool
+    }
+}
+
+RegisterUserHandler --> IUserRepository
+RegisterUserHandler --> IAuditLogger
+RegisterUserHandler --> ITokenProvider
+AuthenticateHandler --> IUserRepository
+AuthenticateHandler --> ITokenProvider
+AuthenticateHandler --> IAuditLogger
+RefreshTokenHandler --> ITokenProvider
+GrantConsentHandler --> IConsentService
+GrantConsentHandler --> IAuditLogger
+RevokeConsentHandler --> IConsentService
+RevokeConsentHandler --> IAuditLogger
+
+RegisterUserHandler .left.> RegisterUserCommand : handles
+AuthenticateHandler .left.> AuthenticateCommand : handles
+RefreshTokenHandler .left.> RefreshTokenCommand : handles
+GrantConsentHandler .left.> GrantConsentCommand : handles
+RevokeConsentHandler .left.> RevokeConsentCommand : handles
+
+@enduml

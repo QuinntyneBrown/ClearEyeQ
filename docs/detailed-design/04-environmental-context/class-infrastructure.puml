@@ -1,0 +1,71 @@
+@startuml class-infrastructure
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Environmental Context -- Infrastructure Layer
+
+package "External API Adapters" {
+
+    class OpenWeatherMapClient {
+        -_httpClient : HttpClient
+        -_apiKey : string
+        --
+        +GetAirQualityAsync(lat, lon) : AirQualityIndex
+        +GetUVIndexAsync(lat, lon) : UVIndex
+        +GetHumidityAsync(lat, lon) : Humidity
+    }
+
+    class AmbeePollenClient {
+        -_httpClient : HttpClient
+        -_apiKey : string
+        --
+        +GetPollenCountAsync(lat, lon) : PollenCount
+    }
+
+    class ScreenTimeOSBridge {
+        --
+        +NormalizeRecord(raw) : ScreenTimeRecord
+    }
+}
+
+package "Persistence" {
+
+    class CosmosTimeSeriesRepository {
+        -_container : Container
+        --
+        +SaveSnapshotAsync(snapshot) : void
+        +SaveScreenTimeAsync(record) : void
+        +GetHistoryAsync(userId, from, to) : List<EnvironmentalSnapshot>
+    }
+}
+
+package "Background Jobs" {
+
+    class EnvironmentalCaptureJob {
+        -_mediator : IMediator
+        -_userProvider : IActiveUserProvider
+        --
+        +ExecuteAsync(ct) : Task
+    }
+}
+
+package "Port Interfaces" <<Frame>> {
+
+    interface IWeatherProvider <<Interface>>
+    interface IPollenProvider <<Interface>>
+    interface IScreenTimeAdapter <<Interface>>
+    interface IEnvironmentalRepository <<Interface>>
+}
+
+OpenWeatherMapClient ..|> IWeatherProvider
+AmbeePollenClient ..|> IPollenProvider
+ScreenTimeOSBridge ..|> IScreenTimeAdapter
+CosmosTimeSeriesRepository ..|> IEnvironmentalRepository
+
+EnvironmentalCaptureJob --> IWeatherProvider : triggers via mediator
+EnvironmentalCaptureJob --> IPollenProvider : triggers via mediator
+
+@enduml

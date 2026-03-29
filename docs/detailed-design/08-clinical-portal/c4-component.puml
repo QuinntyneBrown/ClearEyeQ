@@ -1,0 +1,43 @@
+@startuml
+skinparam defaultFontSize 11
+
+!include <C4/C4_Component>
+
+title Clinical Portal - C4 Component Diagram
+
+Container_Boundary(portal, "Clinical Portal") {
+
+    Component(react, "React Frontend", "React 18, TypeScript", "Clinician-facing SPA with patient dashboard, referral inbox, and notes editor")
+
+    Component(bff, "BFF API", "ASP.NET Core 9 Minimal API", "Backend-for-Frontend serving the React app with aggregated read models")
+
+    Component(projections, "Read-Model Projections", "MediatR Event Handlers", "Projects events from Scan, Diagnostic, Treatment contexts into local read models")
+
+    Component(referralModule, "Referral Module", "CQRS Handlers", "Manages ReferralCase lifecycle: create, accept, decline")
+
+    Component(notesModule, "Clinical Notes Module", "CQRS Handlers", "Manages ClinicalNote creation and amendment")
+
+    Component(signalrHub, "SignalR Hub", "ASP.NET Core SignalR", "Real-time updates to clinician dashboards")
+}
+
+ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Read models, referral cases, clinical notes, patient assignments")
+
+ContainerDb(redis, "Redis Cache", "Redis 7", "Cached patient summaries and session state")
+
+Container_Ext(serviceBus, "Azure Service Bus", "Messaging", "Integration events from Scan, Diagnostic, Treatment contexts")
+
+Container_Ext(identityCtx, "Identity Context", "Auth Provider", "JWT token validation and user identity")
+
+Rel(react, bff, "HTTPS / JSON", "REST API calls")
+Rel(react, signalrHub, "WebSocket", "Real-time updates")
+Rel(bff, referralModule, "MediatR", "Commands & queries")
+Rel(bff, notesModule, "MediatR", "Commands & queries")
+Rel(bff, postgres, "Npgsql", "Read/write")
+Rel(bff, redis, "StackExchange.Redis", "Cache read models")
+Rel(serviceBus, projections, "Subscribe", "Domain events")
+Rel(projections, postgres, "Npgsql", "Upsert read models")
+Rel(projections, signalrHub, "Notify", "Push updates")
+Rel(referralModule, serviceBus, "Publish", "ReferralAccepted/Declined")
+Rel(bff, identityCtx, "JWT", "Validate tokens")
+
+@enduml

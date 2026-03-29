@@ -1,0 +1,65 @@
+@startuml seq-sleep-assessment
+title Sleep Quality Assessment — Sequence Diagram
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+participant "Monitoring API\n(.NET 9)" as API
+participant "MediatR\nPipeline" as MediatR
+participant "AssessSleep\nHandler" as Handler
+participant "IMonitoring\nRepository" as Repo
+participant "ISleepScorer" as Scorer
+participant "Cosmos DB" as Cosmos
+participant "Azure\nService Bus" as Bus
+
+-> API : POST /api/monitoring/assess-sleep\n{ userId, date }
+activate API
+
+API -> MediatR : Send(AssessSleepCommand)
+activate MediatR
+
+MediatR -> Handler : Handle(command)
+activate Handler
+
+Handler -> Repo : GetWearableDataForDate(userId, date,\nmetricType: SleepStage)
+activate Repo
+Repo -> Cosmos : Query sleep-related WearableDataPoints
+activate Cosmos
+Cosmos --> Repo : DataPoints from Oura, HealthKit, etc.
+deactivate Cosmos
+Repo --> Handler : List<WearableDataPoint> (multi-source)
+deactivate Repo
+
+Handler -> Handler : Merge & deduplicate across sources\nExtract stages, duration, SpO2 trends
+
+Handler -> Scorer : ComputeQualityScore(stages, duration, spO2)
+activate Scorer
+Scorer --> Handler : qualityScore: 0.0..1.0
+deactivate Scorer
+
+Handler -> Handler : Build SleepAssessment entity\nAttach to MonitoringSession\nEvaluateThresholds()
+
+Handler -> Repo : SaveAsync(session)
+activate Repo
+Repo -> Cosmos : Upsert MonitoringSession
+activate Cosmos
+Cosmos --> Repo : OK
+deactivate Cosmos
+Repo --> Handler : Saved
+deactivate Repo
+
+Handler -> Bus : Publish MonitoringDataReceived\n{ type: SleepAssessment, qualityScore }
+activate Bus
+Bus --> Handler : Accepted
+deactivate Bus
+
+Handler --> MediatR : Unit
+deactivate Handler
+
+MediatR --> API : Result
+deactivate MediatR
+
+<-- API : 200 OK { qualityScore, stages }
+deactivate API
+
+@enduml

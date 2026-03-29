@@ -1,0 +1,48 @@
+@startuml c4-component
+!include <C4/C4_Component>
+
+title Environmental Context -- Component Diagram (C4 Level 3)
+
+Container_Boundary(env, "Environmental Service") {
+
+    Component(api, "Environmental API", ".NET 9 / ASP.NET Core", "REST endpoints for screen time\nrecording and history queries")
+
+    Component(job, "EnvironmentalCaptureJob", "Hangfire Background Job", "Scheduled job that triggers\nenvironmental data collection\nevery 30 minutes per user")
+
+    Component(handler, "CaptureSnapshotHandler", "MediatR Handler", "Orchestrates provider calls,\nnormalizes data, builds\nEnvironmentalSnapshot aggregate")
+
+    Component(screenHandler, "RecordScreenTimeHandler", "MediatR Handler", "Normalizes and persists\nscreen time records from\nmobile clients")
+
+    Component(weatherAdapter, "OpenWeatherMapClient", ".NET HttpClient", "Fetches AQI, UV index,\nand humidity data")
+
+    Component(pollenAdapter, "AmbeePollenClient", ".NET HttpClient", "Fetches tree, grass, and\nweed pollen concentrations")
+
+    Component(screenBridge, "ScreenTimeOSBridge", "Adapter", "Normalizes iOS Screen Time\nand Android Digital Wellbeing\ndata into canonical records")
+
+    Component(repo, "CosmosTimeSeriesRepository", "Cosmos DB SDK", "Persists snapshots and\nscreen time with time-series\npartitioning by UserId")
+}
+
+System_Ext(openweather, "OpenWeatherMap / IQAir", "Air quality, UV,\nhumidity APIs")
+System_Ext(ambee, "Ambee Pollen API", "Pollen concentration\ndata provider")
+System_Ext(mobile, "Mobile App", "Pushes screen time\nrecords to API")
+
+ContainerDb(cosmos, "Cosmos DB", "Time-Series Container", "Environmental snapshots\nand screen time records")
+Container(bus, "Azure Service Bus", "Message Broker", "EnvironmentalSnapshotCaptured\nevents for downstream contexts")
+
+Rel(job, handler, "Dispatches command", "MediatR")
+Rel(api, screenHandler, "Dispatches command", "MediatR")
+Rel(api, repo, "Queries history", "MediatR")
+Rel(handler, weatherAdapter, "Fetches AQI / UV / humidity")
+Rel(handler, pollenAdapter, "Fetches pollen data")
+Rel(screenHandler, screenBridge, "Normalizes records")
+Rel(handler, repo, "Persists snapshots")
+Rel(screenHandler, repo, "Persists screen time")
+Rel(handler, bus, "Publishes events")
+Rel(weatherAdapter, openweather, "REST / JSON", "HTTPS")
+Rel(pollenAdapter, ambee, "REST / JSON", "HTTPS")
+Rel(mobile, api, "POST screen time", "HTTPS")
+Rel(repo, cosmos, "Read / Write", "Cosmos SDK")
+
+LAYOUT_WITH_LEGEND()
+
+@enduml

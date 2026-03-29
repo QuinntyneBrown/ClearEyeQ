@@ -1,0 +1,52 @@
+@startuml
+skinparam defaultFontSize 11
+
+!include <C4/C4_Component>
+
+title Notifications and Alerts - C4 Component Diagram
+
+Container_Boundary(notifications, "Notifications and Alerts") {
+
+    Component(eventConsumer, "Event Consumer", "Azure Service Bus Subscriber", "Consumes integration events from all ClearEyeQ contexts")
+
+    Component(alertEngine, "Alert Rule Engine", "Domain Service", "Evaluates events against alert rules to determine notification category and priority")
+
+    Component(prefService, "Preference Service", "Domain Service", "Resolves user channel preferences and quiet hours policies")
+
+    Component(rateLimiter, "Rate Limiter", "Redis-backed Service", "Throttles notifications per user per category to prevent fatigue")
+
+    Component(templateEngine, "Template Engine", "Razor/Scriban", "Renders channel-specific notification content from templates")
+
+    Component(dispatcher, "Channel Dispatcher", "Infrastructure", "Routes formatted messages to appropriate channel senders")
+
+    Component(notifApi, "Notification API", "ASP.NET Core 9 Minimal API", "REST endpoints for preferences, notification history, mark-as-read")
+
+    Component(signalrHub, "SignalR Hub", "ASP.NET Core SignalR", "Real-time in-app notification delivery")
+}
+
+ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Notifications, preferences, alert rules, delivery attempts")
+
+ContainerDb(redis, "Redis", "Redis 7", "Rate-limit counters, preference cache, connection mapping")
+
+Container_Ext(serviceBus, "Azure Service Bus", "Messaging", "Integration events from all contexts")
+
+Container_Ext(firebase, "Firebase Cloud Messaging", "Google", "Push notifications to mobile devices")
+
+Container_Ext(sendgrid, "SendGrid", "Twilio", "Transactional email delivery")
+
+Container_Ext(twilio, "Twilio SMS", "Twilio", "SMS message delivery")
+
+Rel(serviceBus, eventConsumer, "Subscribe", "Domain events")
+Rel(eventConsumer, alertEngine, "Evaluate", "Event data")
+Rel(alertEngine, prefService, "Resolve", "User preferences")
+Rel(prefService, rateLimiter, "Check", "Rate limits")
+Rel(rateLimiter, templateEngine, "Format", "Notification content")
+Rel(templateEngine, dispatcher, "Dispatch", "Formatted messages")
+Rel(dispatcher, firebase, "HTTP", "Push messages")
+Rel(dispatcher, signalrHub, "Invoke", "In-app messages")
+Rel(dispatcher, sendgrid, "HTTP", "Email messages")
+Rel(dispatcher, twilio, "HTTP", "SMS messages")
+Rel(notifApi, postgres, "Npgsql", "Read/write")
+Rel(prefService, redis, "StackExchange.Redis", "Cached preferences")
+
+@enduml

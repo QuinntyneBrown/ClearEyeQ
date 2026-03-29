@@ -1,0 +1,60 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title FHIR Interoperability - Application Services (CQRS + MediatR)
+
+package "Commands" <<Rectangle>> {
+
+    class ExportPatientDataCommand <<Command>> {
+        + PatientId : Guid
+        + RequestedBy : Guid
+        + ResourceTypes : List<FhirResourceType>
+        + Format : ExportFormat
+    }
+
+    class ImportClinicalDataCommand <<Command>> {
+        + EndpointId : Guid
+        + FhirBundle : string
+        + ValidateOnly : bool
+    }
+
+    class SyncWithEhrCommand <<Command>> {
+        + EndpointId : Guid
+        + PatientId : Guid
+        + Direction : SyncDirection
+    }
+}
+
+package "Queries" <<Rectangle>> {
+
+    class GetExportJobStatusQuery <<Query>> {
+        + JobId : Guid
+    }
+
+    class GetFhirEndpointsQuery <<Query>> {
+        + ActiveOnly : bool
+    }
+}
+
+package "Handlers" <<Rectangle>> {
+
+    class ExportPatientDataHandler <<Handler>> {
+        - _scanContext : IScanReadService
+        - _diagnosticContext : IDiagnosticReadService
+        - _treatmentContext : ITreatmentReadService
+        - _mappers : IEnumerable<IFhirMapper>
+        - _blobStorage : IBlobStorageService
+        --
+        + Handle(command) : Result<ExportJobDto>
+    }
+}
+
+ExportPatientDataCommand --> ExportPatientDataHandler
+ImportClinicalDataCommand --> ExportPatientDataHandler
+SyncWithEhrCommand --> ExportPatientDataHandler
+GetExportJobStatusQuery --> ExportPatientDataHandler
+GetFhirEndpointsQuery --> ExportPatientDataHandler
+
+@enduml

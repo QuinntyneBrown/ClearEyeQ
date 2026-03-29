@@ -1,0 +1,79 @@
+@startuml class-ml-service
+title Scan Engine — Python ML Sidecar Classes
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Scan ML Sidecar (Python)" {
+
+    class ScanMLService <<gRPC Service>> {
+        +AnalyzeScan(request) : ScanAnalysisResponse
+        +GetPositioningFeedback(frame) : PositioningResponse
+    }
+
+    class ImagePreprocessor {
+        -target_size : tuple
+        -clahe : cv2.CLAHE
+        +load_image(blob_uri) : np.ndarray
+        +crop_eye_region(image, bbox) : np.ndarray
+        +normalize(image) : np.ndarray
+        +compensate_lighting(image, lux, color_temp) : np.ndarray
+        +pipeline(blob_uri, ambient) : np.ndarray
+    }
+
+    class PositioningModel {
+        -eye_detector : cv2.CascadeClassifier
+        -landmark_model : dlib.shape_predictor
+        +detect_eye(frame) : BoundingBox
+        +compute_alignment(frame) : AlignmentResult
+        +is_ready(alignment) : bool
+    }
+
+    class RednessScorer {
+        -session : ort.InferenceSession
+        -threshold : float
+        +preprocess_for_model(image) : np.ndarray
+        +infer(image) : RednessResult
+        +compute_zone_breakdown(heatmap) : dict
+    }
+
+    class TearFilmAnalyzer {
+        -interference_model : ort.InferenceSession
+        +detect_interference_patterns(image) : PatternResult
+        +estimate_breakup_time(patterns) : float
+        +grade_lipid_layer(patterns) : int
+        +analyze(image) : TearFilmResult
+    }
+
+    class AlignmentResult <<dataclass>> {
+        +score : float
+        +h_offset : float
+        +v_offset : float
+        +direction_hint : str
+        +is_ready : bool
+    }
+
+    class RednessResult <<dataclass>> {
+        +overall_score : int
+        +confidence : float
+        +zone_breakdown : dict
+        +heatmap : np.ndarray
+    }
+
+    class TearFilmResult <<dataclass>> {
+        +breakup_time_sec : float
+        +lipid_layer_grade : int
+        +coverage_percent : float
+        +confidence : float
+    }
+}
+
+ScanMLService --> ImagePreprocessor : uses
+ScanMLService --> PositioningModel : uses
+ScanMLService --> RednessScorer : uses
+ScanMLService --> TearFilmAnalyzer : uses
+RednessScorer ..> RednessResult : returns
+TearFilmAnalyzer ..> TearFilmResult : returns
+PositioningModel ..> AlignmentResult : returns
+
+@enduml

@@ -1,0 +1,60 @@
+@startuml seq-environmental-capture
+
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1
+skinparam maxMessageSize 200
+
+title Environmental Context -- Scheduled Capture Sequence
+
+participant "Scheduler\n(Hangfire)" as Scheduler
+participant "EnvironmentalCaptureJob" as Job
+participant "CaptureSnapshotHandler" as Handler
+participant "OpenWeatherMapClient\n<<IWeatherProvider>>" as Weather
+participant "AmbeePollenClient\n<<IPollenProvider>>" as Pollen
+participant "EnvironmentalSnapshot\n<<Aggregate>>" as Snapshot
+participant "CosmosTimeSeriesRepository\n<<IEnvironmentalRepository>>" as Repo
+participant "Azure Service Bus" as Bus
+
+Scheduler -> Job : ExecuteAsync(batchOfUsers)
+loop for each active user
+    Job -> Handler : Send(CaptureEnvironmentalSnapshotCommand)
+
+    Handler -> Weather : GetAirQualityAsync(lat, lon)
+    activate Weather
+    Weather --> Handler : AirQualityIndex
+    deactivate Weather
+
+    Handler -> Pollen : GetPollenCountAsync(lat, lon)
+    activate Pollen
+    Pollen --> Handler : PollenCount
+    deactivate Pollen
+
+    Handler -> Weather : GetUVIndexAsync(lat, lon)
+    activate Weather
+    Weather --> Handler : UVIndex
+    deactivate Weather
+
+    Handler -> Weather : GetHumidityAsync(lat, lon)
+    activate Weather
+    Weather --> Handler : Humidity
+    deactivate Weather
+
+    Handler -> Snapshot : new(userId, location, timestamp)
+    Handler -> Snapshot : AttachAirQuality(aqi)
+    Handler -> Snapshot : AttachPollen(pollen)
+    Handler -> Snapshot : AttachUV(uv)
+    Handler -> Snapshot : AttachHumidity(humidity)
+    Handler -> Snapshot : Finalize()
+
+    Handler -> Repo : SaveSnapshotAsync(snapshot)
+    activate Repo
+    Repo --> Handler : success
+    deactivate Repo
+
+    Handler -> Bus : Publish(EnvironmentalSnapshotCaptured)
+    activate Bus
+    Bus --> Handler : ack
+    deactivate Bus
+end
+
+@enduml

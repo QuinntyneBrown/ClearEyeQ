@@ -1,0 +1,113 @@
+@startuml class-domain-model
+title Treatment Orchestration — Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Treatment Orchestration Domain" {
+
+    class TreatmentPlan <<AggregateRoot>> {
+        +Id : PlanId
+        +UserId : UserId
+        +DiagnosisId : DiagnosisId
+        +Phases : List<TreatmentPhase>
+        +EscalationRule : EscalationRule
+        +Status : TreatmentStatus
+        +Audit : AuditMetadata
+        +AddPhase(phase) : void
+        +AdjustIntervention(phaseNum, intervention) : void
+        +Escalate(reason) : void
+        +MarkResolved() : void
+        +TransitionToMaintenance() : void
+    }
+
+    class TreatmentPhase <<Entity>> {
+        +Id : Guid
+        +PhaseNumber : int
+        +Duration : TimeSpan
+        +Interventions : List<Intervention>
+        +StartDate : DateTimeOffset
+        +EndDate : DateTimeOffset?
+    }
+
+    abstract class Intervention <<Entity>> {
+        +Id : Guid
+        +Description : string
+        +IsActive : bool
+        +CreatedAt : DateTimeOffset
+    }
+
+    class MedicationIntervention <<Entity>> {
+        +DrugName : string
+        +Dosage : Dosage
+        +Frequency : Frequency
+        +Route : string
+        +IsCompounded : bool
+    }
+
+    class BehavioralIntervention <<Entity>> {
+        +Type : BehavioralType
+        +Schedule : CronExpression
+        +DurationMinutes : int
+        +Instructions : string
+    }
+
+    class EnvironmentalIntervention <<Entity>> {
+        +Target : EnvironmentalTarget
+        +Recommendation : string
+        +TargetValue : string
+    }
+
+    class EfficacyMeasurement <<ValueObject>> {
+        +MeasuredAt : DateTimeOffset
+        +ScanId : ScanId?
+        +BaselineScore : double
+        +CurrentScore : double
+        +ImprovementPercent : double
+    }
+
+    class EscalationRule <<ValueObject>> {
+        +ThresholdPercent : double
+        +MaxDaysBeforeEscalation : int
+        +EscalationType : EscalationType
+        +SpecialistCategory : string
+    }
+
+    enum TreatmentStatus {
+        Draft
+        Active
+        Adjusting
+        Escalated
+        Resolved
+        Maintenance
+    }
+
+    enum BehavioralType {
+        ScreenBreak
+        Hydration
+        SleepHygiene
+        BlinkExercise
+        WarmCompress
+    }
+
+    enum EnvironmentalTarget {
+        Humidity
+        Lighting
+        AirQuality
+        ScreenDistance
+    }
+}
+
+TreatmentPlan "1" *-- "1..*" TreatmentPhase
+TreatmentPlan *-- EscalationRule
+TreatmentPlan --> TreatmentStatus
+
+TreatmentPhase "1" *-- "1..*" Intervention
+
+MedicationIntervention --|> Intervention
+BehavioralIntervention --|> Intervention
+EnvironmentalIntervention --|> Intervention
+
+TreatmentPlan "1" o-- "0..*" EfficacyMeasurement
+
+@enduml

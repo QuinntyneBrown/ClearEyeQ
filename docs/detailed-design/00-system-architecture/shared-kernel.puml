@@ -1,0 +1,72 @@
+@startuml shared-kernel
+title ClearEyeQ — Shared Kernel
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+
+package "Shared Kernel" {
+    class UserId <<ValueObject>> {
+        +Value : Guid
+    }
+
+    class TenantId <<ValueObject>> {
+        +Value : Guid
+    }
+
+    class ScanId <<ValueObject>> {
+        +Value : Guid
+    }
+
+    class ConfidenceScore <<ValueObject>> {
+        +Value : double {0.0..1.0}
+        +Label : string
+    }
+
+    class AuditMetadata <<ValueObject>> {
+        +CreatedAt : DateTimeOffset
+        +CreatedBy : UserId
+        +ModifiedAt : DateTimeOffset?
+        +ModifiedBy : UserId?
+    }
+
+    enum Severity {
+        None
+        Mild
+        Moderate
+        Severe
+        Critical
+    }
+
+    enum EyeSide {
+        Left
+        Right
+    }
+
+    interface IDomainEvent {
+        +OccurredAt : DateTimeOffset
+        +EventId : Guid
+    }
+
+    interface IAuditableEntity {
+        +Audit : AuditMetadata
+    }
+
+    interface IRepository<T> {
+        +GetByIdAsync(id) : T?
+        +AddAsync(entity) : void
+        +UpdateAsync(entity) : void
+    }
+
+    abstract class AggregateRoot {
+        +Id : Guid
+        +DomainEvents : IReadOnlyList<IDomainEvent>
+        #AddDomainEvent(event) : void
+        +ClearDomainEvents() : void
+    }
+
+    AggregateRoot ..|> IAuditableEntity
+    AggregateRoot --> AuditMetadata
+    AggregateRoot --> "*" IDomainEvent
+}
+
+@enduml

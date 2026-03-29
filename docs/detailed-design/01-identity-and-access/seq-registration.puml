@@ -1,0 +1,54 @@
+@startuml seq-registration
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+title User Registration Flow
+
+actor "Mobile App" as Mobile
+participant "API Gateway" as Gateway
+participant "IdentityController" as Controller
+participant "MediatR" as MediatR
+participant "RegisterUserHandler" as Handler
+participant "IUserRepository\n(Cosmos)" as Repo
+participant "IAuditLogger" as Audit
+participant "ITokenProvider" as Token
+
+Mobile -> Gateway : POST /api/identity/register\n{email, password, tenantName}
+Gateway -> Controller : Forward (TLS 1.3)
+
+Controller -> Controller : Validate request model
+alt Validation fails
+    Controller --> Mobile : 400 Bad Request
+end
+
+Controller -> MediatR : Send(RegisterUserCommand)
+MediatR -> Handler : Handle(command)
+
+Handler -> Repo : GetByEmailAsync(email)
+alt User already exists
+    Handler --> Controller : Conflict result
+    Controller --> Mobile : 409 Conflict
+end
+
+Handler -> Handler : Hash password (Argon2id)
+Handler -> Handler : Create Tenant if new org
+Handler -> Handler : Create User aggregate\n(assign Patient role)
+
+Handler -> Repo : SaveAsync(user)
+Repo --> Handler : Success
+
+Handler -> Audit : LogAsync(UserRegistered)
+Audit --> Handler : Logged
+
+Handler -> Token : GenerateAccessToken(user)
+Token --> Handler : JWT access token
+Handler -> Token : GenerateRefreshToken(user)
+Token --> Handler : Refresh token
+
+Handler --> MediatR : AuthResult
+MediatR --> Controller : AuthResult
+Controller --> Gateway : 201 Created\n{accessToken, refreshToken, expiresIn}
+Gateway --> Mobile : 201 Created
+
+@enduml

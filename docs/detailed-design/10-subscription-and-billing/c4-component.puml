@@ -1,0 +1,48 @@
+@startuml
+skinparam defaultFontSize 11
+
+!include <C4/C4_Component>
+
+title Subscription and Billing - C4 Component Diagram
+
+Container_Boundary(billing, "Subscription and Billing") {
+
+    Component(billingApi, "Billing API", "ASP.NET Core 9 Minimal API", "REST endpoints for subscription management, plan listing, usage queries")
+
+    Component(webhookEndpoint, "Stripe Webhook Endpoint", "ASP.NET Core Middleware", "Receives and validates Stripe webhook events with signature verification")
+
+    Component(subscriptionModule, "Subscription Module", "CQRS Handlers", "Manages subscription lifecycle: create, upgrade, downgrade, cancel")
+
+    Component(featureGateService, "Feature Gate Service", "Domain Service", "Checks whether a user's plan tier grants access to a feature")
+
+    Component(usageMeterService, "Usage Meter Service", "Domain Service", "Tracks and enforces metered usage limits per subscription")
+
+    Component(stripeAdapter, "Stripe Adapter", "Infrastructure", "Wraps Stripe SDK for checkout sessions, customer portal, invoice management")
+
+    Component(eventPublisher, "Event Publisher", "Azure Service Bus Publisher", "Publishes SubscriptionChanged, PaymentFailed events")
+}
+
+ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "Subscriptions, plans, billing cycles, usage meters, feature gates")
+
+ContainerDb(redis, "Redis", "Redis 7", "Feature-gate cache, usage counters")
+
+Container_Ext(stripe, "Stripe", "Payment Platform", "Payment processing, subscription billing, invoicing")
+
+Container_Ext(serviceBus, "Azure Service Bus", "Messaging", "Publish subscription events; consume ScanCompleted for metering")
+
+Container_Ext(webApp, "Web Application", "React SPA", "User-facing subscription management UI")
+
+Rel(webApp, billingApi, "HTTPS", "Subscription operations")
+Rel(stripe, webhookEndpoint, "HTTPS", "Webhook events")
+Rel(billingApi, subscriptionModule, "MediatR", "Commands & queries")
+Rel(billingApi, featureGateService, "MediatR", "Feature access checks")
+Rel(webhookEndpoint, subscriptionModule, "MediatR", "HandleStripeWebhookCommand")
+Rel(subscriptionModule, stripeAdapter, "Stripe SDK", "Create sessions, manage subscriptions")
+Rel(stripeAdapter, stripe, "HTTPS", "Stripe API calls")
+Rel(subscriptionModule, postgres, "Npgsql", "Read/write")
+Rel(featureGateService, redis, "StackExchange.Redis", "Cached gate lookups")
+Rel(usageMeterService, postgres, "Npgsql", "Usage tracking")
+Rel(subscriptionModule, eventPublisher, "Publish", "Domain events")
+Rel(eventPublisher, serviceBus, "AMQP", "Integration events")
+
+@enduml

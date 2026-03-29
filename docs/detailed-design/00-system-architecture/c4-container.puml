@@ -1,0 +1,61 @@
+@startuml c4-container
+!include <C4/C4_Container>
+
+title ClearEyeQ — Container Diagram (C4 Level 2)
+
+Person(patient, "Patient", "Mobile app user")
+Person(clinician, "Clinician", "Web portal user")
+
+System_Boundary(cleareyeq, "ClearEyeQ Platform") {
+    Container(mobile, "Mobile App", "React Native + Expo", "Eye scan capture,\nhealth dashboard,\ntreatment tracking")
+    Container(portal, "Clinical Portal", "React Web App", "Patient management,\nreferral inbox")
+
+    Container(gateway, "API Gateway", ".NET 9 / YARP", "Routing, auth,\nrate limiting")
+
+    Container(identity, "Identity Service", ".NET 9", "AuthN, AuthZ,\nHIPAA audit")
+    Container(scan, "Scan Service", ".NET 9", "Scan orchestration,\nSignalR feedback")
+    Container(scanml, "Scan ML", "Python / PyTorch", "Image analysis,\nredness scoring")
+    Container(monitoring, "Monitoring Service", ".NET 9", "Wearable sync,\nsleep assessment")
+    Container(env, "Environmental Service", ".NET 9", "AQI, pollen,\nscreen time")
+    Container(diag, "Diagnostic Service", ".NET 9", "Diagnosis orchestration")
+    Container(diagml, "Diagnostic ML", "Python / PyTorch", "Causal inference,\nclassification")
+    Container(predict, "Predictive Service", ".NET 9 + Python", "Forecasting,\nflare-up detection")
+    Container(treat, "Treatment Service", ".NET 9 + Python", "Treatment plans,\nclosed-loop optimization")
+    Container(notif, "Notification Service", ".NET 9", "Push, email, SMS,\nin-app alerts")
+    Container(billing, "Billing Service", ".NET 9", "Subscriptions,\nfeature gating")
+    Container(fhir, "FHIR Service", ".NET 9", "HL7 FHIR R4\ndata exchange")
+
+    ContainerDb(cosmos, "Cosmos DB", "Azure Cosmos DB", "Patient data,\nscan records")
+    ContainerDb(pg, "PostgreSQL", "PostgreSQL + pgvector", "Knowledge graph,\nembeddings")
+    ContainerDb(redis, "Redis", "Azure Redis", "Cache, sessions,\nrate limits")
+    ContainerDb(blob, "Blob Storage", "Azure Blob", "Scan images")
+    Container(bus, "Service Bus", "Azure Service Bus", "Domain events")
+}
+
+Rel(patient, mobile, "Uses", "HTTPS")
+Rel(clinician, portal, "Uses", "HTTPS")
+Rel(mobile, gateway, "API calls", "HTTPS / WSS")
+Rel(portal, gateway, "API calls", "HTTPS")
+
+Rel(gateway, identity, "Routes")
+Rel(gateway, scan, "Routes")
+Rel(gateway, monitoring, "Routes")
+Rel(gateway, env, "Routes")
+Rel(gateway, diag, "Routes")
+Rel(gateway, predict, "Routes")
+Rel(gateway, treat, "Routes")
+Rel(gateway, notif, "Routes")
+Rel(gateway, billing, "Routes")
+Rel(gateway, fhir, "Routes")
+
+Rel(scan, scanml, "Inference", "gRPC")
+Rel(diag, diagml, "Inference", "gRPC")
+Rel(scan, blob, "Stores images")
+Rel(scan, bus, "Publishes events")
+Rel(diag, bus, "Pub/Sub events")
+Rel(predict, bus, "Pub/Sub events")
+Rel(treat, bus, "Pub/Sub events")
+Rel(notif, bus, "Subscribes")
+
+LAYOUT_WITH_LEGEND()
+@enduml

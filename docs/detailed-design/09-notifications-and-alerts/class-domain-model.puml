@@ -1,0 +1,92 @@
+@startuml
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Notifications and Alerts - Domain Model
+
+package "Notifications Domain" {
+
+    class Notification <<Aggregate Root>> {
+        + NotificationId : Guid
+        + RecipientId : Guid
+        + Category : NotificationCategory
+        + Title : string
+        + Body : string
+        + Priority : NotificationPriority
+        + Status : NotificationStatus
+        + CreatedAt : DateTimeOffset
+        --
+        + MarkAsRead() : void
+        + Cancel() : void
+        + AddDeliveryAttempt(attempt) : void
+    }
+
+    enum NotificationChannel {
+        Push
+        InApp
+        Email
+        SMS
+    }
+
+    class NotificationPreference <<Entity>> {
+        + PreferenceId : Guid
+        + UserId : Guid
+        + Category : NotificationCategory
+        + EnabledChannels : List<NotificationChannel>
+        + IsEnabled : bool
+        --
+        + EnableChannel(channel) : void
+        + DisableChannel(channel) : void
+    }
+
+    class AlertRule <<Entity>> {
+        + RuleId : Guid
+        + EventType : string
+        + Category : NotificationCategory
+        + Priority : NotificationPriority
+        + TemplateId : string
+        + IsActive : bool
+        --
+        + Evaluate(eventData) : bool
+    }
+
+    class DeliveryAttempt <<Value Object>> {
+        + AttemptId : Guid
+        + Channel : NotificationChannel
+        + Status : DeliveryStatus
+        + AttemptedAt : DateTimeOffset
+        + FailureReason : string?
+        + ProviderMessageId : string?
+    }
+
+    class QuietHoursPolicy <<Entity>> {
+        + PolicyId : Guid
+        + UserId : Guid
+        + StartTime : TimeOnly
+        + EndTime : TimeOnly
+        + TimeZone : string
+        + ExemptPriorities : List<NotificationPriority>
+        --
+        + IsActive(currentTime) : bool
+        + IsExempt(priority) : bool
+    }
+
+    class NotificationTemplate <<Entity>> {
+        + TemplateId : string
+        + Channel : NotificationChannel
+        + SubjectTemplate : string
+        + BodyTemplate : string
+        --
+        + Render(placeholders) : string
+    }
+}
+
+Notification "1" *-- "*" DeliveryAttempt : tracks
+Notification ..> NotificationChannel : delivered via
+NotificationPreference --> NotificationChannel : configures
+AlertRule ..> Notification : creates >
+QuietHoursPolicy ..> Notification : suppresses >
+NotificationTemplate ..> Notification : formats >
+
+@enduml

@@ -1,0 +1,55 @@
+@startuml seq-closed-loop
+title Closed-Loop Optimization Flow
+
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+
+participant "Service Bus" as Bus
+participant "ScanCompleted\nConsumer" as Consumer
+participant "MediatR" as MediatR
+participant "TrackEfficacy\nHandler" as EfficacyHandler
+participant "EfficacyTracker" as Tracker
+participant "EscalationEngine" as Escalation
+participant "ResolutionVerifier" as Verifier
+participant "ITreatmentRepository\n(Cosmos)" as Repo
+participant "IDomainEventPublisher\n(Service Bus)" as Publisher
+
+Bus -> Consumer : ScanCompleted event\n{scanId, userId, rednessScore}
+Consumer -> MediatR : Send(TrackEfficacyCommand)
+MediatR -> EfficacyHandler : Handle(command)
+
+EfficacyHandler -> Repo : GetActivePlanAsync(userId)
+Repo --> EfficacyHandler : TreatmentPlan
+
+EfficacyHandler -> Tracker : ComputeEfficacy(plan, latestScan)
+Tracker --> EfficacyHandler : EfficacyMeasurement
+
+EfficacyHandler -> Repo : SaveAsync(plan + measurement)
+
+alt Efficacy improving and checkpoint reached
+    EfficacyHandler -> Verifier : VerifyAtCheckpoint(plan, dayMark)
+    Verifier --> EfficacyHandler : ResolutionResult
+
+    alt Resolved
+        EfficacyHandler -> Repo : SaveAsync(plan.MarkResolved())
+        EfficacyHandler -> Publisher : PublishAsync(TreatmentResolved)
+    end
+
+else Efficacy below threshold
+    EfficacyHandler -> Escalation : Evaluate(plan, measurements)
+    Escalation --> EfficacyHandler : EscalationDecision
+
+    alt Adjust dose
+        EfficacyHandler -> EfficacyHandler : Recalculate dosage
+        EfficacyHandler -> Repo : SaveAsync(adjustedPlan)
+        EfficacyHandler -> Publisher : PublishAsync(InterventionAdjusted)
+    else Escalate
+        EfficacyHandler -> Publisher : PublishAsync(EscalationTriggered)
+    end
+end
+
+EfficacyHandler --> MediatR : Result
+MediatR --> Consumer : Result
+Consumer --> Bus : Message completed
+
+@enduml

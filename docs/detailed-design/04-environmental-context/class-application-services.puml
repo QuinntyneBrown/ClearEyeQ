@@ -1,0 +1,88 @@
+@startuml class-application-services
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Environmental Context -- Application Services
+
+package "Commands & Queries" {
+
+    class CaptureEnvironmentalSnapshotCommand <<Command>> {
+        +UserId : Guid
+        +Latitude : double
+        +Longitude : double
+    }
+
+    class RecordScreenTimeCommand <<Command>> {
+        +UserId : Guid
+        +Date : DateOnly
+        +TotalMinutes : int
+        +SessionCount : int
+        +Platform : string
+    }
+
+    class GetEnvironmentalHistoryQuery <<Query>> {
+        +UserId : Guid
+        +From : DateTimeOffset
+        +To : DateTimeOffset
+        +PageSize : int
+        +ContinuationToken : string?
+    }
+}
+
+package "Handlers" {
+
+    class CaptureSnapshotHandler <<Handler>> {
+        --
+        +Handle(command) : SnapshotId
+    }
+
+    class RecordScreenTimeHandler <<Handler>> {
+        --
+        +Handle(command) : void
+    }
+
+    class GetHistoryHandler <<Handler>> {
+        --
+        +Handle(query) : PagedResult<SnapshotDto>
+    }
+}
+
+package "Port Interfaces" {
+
+    interface IWeatherProvider <<Interface>> {
+        +GetAirQualityAsync(lat, lon) : AirQualityIndex
+        +GetUVIndexAsync(lat, lon) : UVIndex
+        +GetHumidityAsync(lat, lon) : Humidity
+    }
+
+    interface IPollenProvider <<Interface>> {
+        +GetPollenCountAsync(lat, lon) : PollenCount
+    }
+
+    interface IScreenTimeAdapter <<Interface>> {
+        +NormalizeRecord(raw) : ScreenTimeRecord
+    }
+
+    interface IEnvironmentalRepository <<Interface>> {
+        +SaveSnapshotAsync(snapshot) : void
+        +SaveScreenTimeAsync(record) : void
+        +GetHistoryAsync(userId, from, to) : List<EnvironmentalSnapshot>
+    }
+}
+
+CaptureSnapshotHandler --> CaptureEnvironmentalSnapshotCommand : handles
+CaptureSnapshotHandler --> IWeatherProvider : uses
+CaptureSnapshotHandler --> IPollenProvider : uses
+CaptureSnapshotHandler --> IEnvironmentalRepository : persists via
+
+RecordScreenTimeHandler --> RecordScreenTimeCommand : handles
+RecordScreenTimeHandler --> IScreenTimeAdapter : normalizes via
+RecordScreenTimeHandler --> IEnvironmentalRepository : persists via
+
+GetHistoryHandler --> GetEnvironmentalHistoryQuery : handles
+GetHistoryHandler --> IEnvironmentalRepository : reads from
+
+@enduml

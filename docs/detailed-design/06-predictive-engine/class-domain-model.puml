@@ -1,0 +1,70 @@
+@startuml class-domain-model
+
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+title Predictive Engine -- Domain Model
+
+package "Predictive Engine Domain" {
+
+    enum RiskLevel {
+        Low
+        Moderate
+        High
+        Critical
+    }
+
+    class Prediction <<Aggregate Root>> {
+        +PredictionId : Guid
+        +UserId : Guid
+        +GeneratedAt : DateTimeOffset
+        +ExpiresAt : DateTimeOffset
+        +ModelVersion : string
+        --
+        +AddForecastWindow(window) : void
+        +AttachFlareUpAlert(alert) : void
+        +SetTrajectory(model) : void
+    }
+
+    class ForecastWindow <<Entity>> {
+        +Day : int
+        +PredictedDate : DateOnly
+        +PredictedScore : decimal
+        +ConfidenceInterval : decimal[]
+        +RiskLevel : RiskLevel
+        +PrimaryFactor : string
+    }
+
+    class FlareUpAlert <<Entity>> {
+        +AlertId : Guid
+        +Probability : decimal
+        +TriggerFactors : string[]
+        +PreventiveActions : string[]
+        +DetectedAt : DateTimeOffset
+    }
+
+    class TrajectoryModel <<Entity>> {
+        +TimeHorizon : int
+        +ProjectedScoresWithTreatment : decimal[]
+        +ProjectedScoresWithout : decimal[]
+        +CredibleIntervalWidth : decimal
+        +BaselineScore : decimal
+    }
+
+    class TriggerPattern <<Value Object>> {
+        +FactorCombination : string[]
+        +Frequency : int
+        +AverageLeadTimeHours : decimal
+        +Strength : decimal
+    }
+}
+
+Prediction "1" *-- "1..3" ForecastWindow
+Prediction "1" *-- "0..1" FlareUpAlert
+Prediction "1" *-- "0..1" TrajectoryModel
+Prediction "1" *-- "0..*" TriggerPattern
+ForecastWindow --> RiskLevel
+
+@enduml

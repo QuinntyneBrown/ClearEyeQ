@@ -1,0 +1,29 @@
+@startuml c4-system-context
+!include <C4/C4_Context>
+
+title ClearEyeQ — System Context (C4 Level 1)
+
+Person(patient, "Patient", "Chronic eye redness sufferer\nor preventive optimizer")
+Person(clinician, "Clinician", "Ophthalmologist or\noptometrist")
+
+System(cleareyeq, "ClearEyeQ Platform", "AI-powered autonomous\nocular health system")
+
+System_Ext(healthkit, "Apple HealthKit /\nGoogle Fit", "Sleep, heart rate,\nactivity data")
+System_Ext(wearable, "Oura / Whoop /\nCPAP", "Sleep stages, HRV,\nSpO2 data")
+System_Ext(weather, "Weather / Pollen\nAPIs", "AQI, pollen count,\nUV index, humidity")
+System_Ext(pharmacy, "Pharmacy APIs\n(Surescripts)", "Medication verification,\ncompounding orders")
+System_Ext(ehr, "EHR Systems\n(FHIR R4)", "Clinical data exchange")
+System_Ext(stripe, "Stripe", "Payment processing")
+
+Rel(patient, cleareyeq, "Scans eyes, views diagnosis,\nfollows treatment plans", "HTTPS / WSS")
+Rel(clinician, cleareyeq, "Reviews patients,\nmanages referrals", "HTTPS")
+
+Rel(cleareyeq, healthkit, "Reads health data", "REST API")
+Rel(cleareyeq, wearable, "Syncs wearable data", "REST API")
+Rel(cleareyeq, weather, "Fetches environmental data", "REST API")
+Rel(cleareyeq, pharmacy, "Verifies medications,\nsubmits formulations", "REST API")
+Rel(cleareyeq, ehr, "Exchanges clinical data", "FHIR R4")
+Rel(cleareyeq, stripe, "Processes payments", "REST API")
+
+LAYOUT_WITH_LEGEND()
+@enduml
